@@ -1,0 +1,86 @@
+{
+  "name": "@hqjs/hq",
+  "version": "0.0.1",
+  "description": "Universal static web server for frontend development",
+  "main": "index.mjs",
+  "scripts": {
+    "dev": "nodemon --experimental-modules index.mjs",
+    "start": "./index.mjs"
+  },
+  "bin": {
+    "hq": "./index.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hqjs/hq.git"
+  },
+  "keywords": [
+    "static server",
+    "frontend",
+    "development",
+    "babel",
+    "webpack",
+    "react",
+    "angular",
+    "vue",
+    "polymer",
+    "hq"
+  ],
+  "homepage": "https://hqjs.org",
+  "author": "hqjs <hqjsorg@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "npm": ">=6",
+    "node": ">=10"
+  },
+  "dependencies": {
+    "@babel/cli": "^7.1.2",
+    "@babel/core": "^7.1.2",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
+    "@babel/plugin-proposal-decorators": "^7.1.2",
+    "@babel/plugin-proposal-export-default-from": "^7.0.0",
+    "@babel/plugin-proposal-export-namespace-from": "^7.0.0",
+    "@babel/preset-env": "^7.1.0",
+    "@babel/preset-flow": "^7.0.0",
+    "@babel/preset-react": "^7.0.0",
+    "@babel/preset-typescript": "^7.1.0",
+    "@hqjs/babel-plugin-transform-css-imports": "0.0.1",
+    "@hqjs/babel-plugin-transform-json-imports": "0.0.1",
+    "@hqjs/babel-plugin-transform-modules": "0.0.1",
+    "@hqjs/babel-plugin-transform-name-imports": "0.0.1",
+    "@hqjs/babel-plugin-transform-named-import-to-destructure": "0.0.1",
+    "@hqjs/babel-plugin-transform-paths": "0.0.1",
+    "@koa/cors": "^2.2.2",
+    "babel-plugin-minify-dead-code-elimination": "^0.5.0",
+    "babel-plugin-transform-define": "^1.3.0",
+    "babel-plugin-transform-function-parameter-decorators": "^1.2.0",
+    "browserslist": "^4.1.1",
+    "chokidar": "^2.0.4",
+    "coffeescript": "^2.3.2",
+    "compressible": "^2.0.15",
+    "cssnano": "^4.1.4",
+    "cssnano-preset-advanced": "^4.0.2",
+    "fs-extra": "^7.0.0",
+    "get-port": "^4.0.0",
+    "glob": "^7.1.3",
+    "html-ast-transform": "^1.0.0",
+    "http-status-codes": "^1.3.0",
+    "koa": "^2.5.3",
+    "koa-compose": "^4.1.0",
+    "livereload": "^0.7.0",
+    "mime-types": "^2.1.20",
+    "parse5": "^5.1.0",
+    "postcss": "^7.0.4",
+    "postcss-preset-env": "^6.0.7",
+    "streaming-cache": "^0.5.5",
+    "woothee": "^1.8.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.6.1",
+    "eslint-config-recommended": "^4.0.0",
+    "nodemon": "^1.18.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
