@@ -19,7 +19,7 @@ and many others.
 
 # Installation
 ```bash
-npm install --g @hq/hq
+npm install --g @hqjs/hq
 ```
 
 # Usage
