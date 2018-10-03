@@ -10,7 +10,6 @@ import resolvePath from './middlewares/resolve-path.mjs';
 import resourceTable from './middlewares/resource-table.mjs';
 // import serverPush from './middlewares/server-push.mjs';
 
-
 export default () => compose([
   errorHandler(),
   cors({ origin: '*' }),
