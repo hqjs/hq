@@ -30,7 +30,7 @@ export default async ctx => {
     });
   const stats = ctx.app.table.touch(`${ctx.srcPath}.map`);
   // TODO add map byte length here
-  const mapBuildPromise = saveContent(JSON.stringify(map), { path: `${ctx.path}.map`, store: ctx.store, stats });
+  const mapBuildPromise = saveContent(JSON.stringify(map), { path: `${ctx.path}.map`, stats, store: ctx.store });
   stats.build.set(ua, mapBuildPromise);
   return saveContent(css, ctx);
 };

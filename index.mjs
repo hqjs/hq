@@ -63,6 +63,18 @@ const startLRServer = async src => {
   ]);
 };
 
+const loadCertificatesFrom = root => Promise.all([ fs.readFile(`${root}/localhost.crt`), fs.readFile(`${root}/device.key`) ])
+
+const loadCertificates = async () => {
+  try {
+    const [ cert, key ] = await loadCertificatesFrom(ROOT);
+    return { cert, key };
+  } catch {
+    const [ cert, key ] = await loadCertificatesFrom(CERT);
+    return { cert, key };
+  }
+}
+
 const startServer = async src => {
   const babelRCPath = path.join(ROOT, '.babelrc');
   const useBabelRC = await fs.pathExists(babelRCPath);
@@ -73,13 +85,13 @@ const startServer = async src => {
   app.babelrc = useBabelRC ? babelRCPath : undefined;
   app.debug = process.env.NODE_ENV === 'debug';
   app.table = new Table().watch([ src, './node_modules' ]);
-  app.startTime = new Date;
+  app.startTime = Date.now();
 
   app.use(hq());
 
   const port = await getPort({ port: PORT, host: '127.0.0.1' });
-  const [ cert, key ] = await Promise.all([ fs.readFile(`${CERT}/localhost.crt`), fs.readFile(`${CERT}/device.key`) ]);
-  const options = { cert, key };
+
+  const options = await loadCertificates();
 
   const server = http2.createSecureServer(options, app.callback());
 
