@@ -1,11 +1,11 @@
-#!/usr/bin/env node --experimental-modules
+#!/usr/bin/env node --experimental-modules --no-warnings
 
 import Koa from 'koa';
 import Table from './res/table.mjs';
 import fs from 'fs-extra';
 import getPort from 'get-port';
 import hq from './hq.mjs';
-import http2 from 'http2';
+import http from 'http';
 import livereload from 'livereload';
 import path from 'path';
 import { readPackageJSON } from './utils.mjs';
@@ -30,8 +30,9 @@ const EXTENSIONS = [
   'svg',
 ];
 
-const CERT = path.resolve(path.dirname(import.meta.url.slice('file://'.length)), 'cert');
 const ROOT = path.resolve();
+
+const app = new Koa;
 
 const getSrc = async () => {
   const packageJSON = await readPackageJSON(ROOT);
@@ -47,6 +48,7 @@ const getSrc = async () => {
 
 const startLRServer = async src => {
   const lrPort = await getPort({ port: LR_PORT });
+  app.lrPort = lrPort;
   const lrServer = livereload.createServer({
     applyCSSLive: false,
     applyImgLive: false,
@@ -63,23 +65,9 @@ const startLRServer = async src => {
   ]);
 };
 
-const loadCertificatesFrom = root => Promise.all([ fs.readFile(`${root}/localhost.crt`), fs.readFile(`${root}/device.key`) ])
-
-const loadCertificates = async () => {
-  try {
-    const [ cert, key ] = await loadCertificatesFrom(ROOT);
-    return { cert, key };
-  } catch {
-    const [ cert, key ] = await loadCertificatesFrom(CERT);
-    return { cert, key };
-  }
-}
-
 const startServer = async src => {
   const babelRCPath = path.join(ROOT, '.babelrc');
   const useBabelRC = await fs.pathExists(babelRCPath);
-
-  const app = new Koa;
 
   app.src = src;
   app.babelrc = useBabelRC ? babelRCPath : undefined;
@@ -91,13 +79,12 @@ const startServer = async src => {
 
   const port = await getPort({ port: PORT, host: '127.0.0.1' });
 
-  const options = await loadCertificates();
-
-  const server = http2.createSecureServer(options, app.callback());
+  const server = http.createServer(app.callback());
 
   server.listen(port, 'localhost', err => {
     if (err) throw err;
-    console.log(`Listening on https://localhost:${port}`, process.uptime());
+    console.log(`Listening on http://localhost:${port}`);
+    console.log(`Start time: ${process.uptime()}`);
     import('./compilers/js.mjs');
     import('./compilers/css.mjs');
     import('./compilers/html.mjs');

@@ -13,6 +13,7 @@ import babelTransformDefine from 'babel-plugin-transform-define';
 import babelTransformExportDefault from '@babel/plugin-proposal-export-default-from';
 import babelTransformExportNamespace from '@babel/plugin-proposal-export-namespace-from';
 import babelTransformJsonImport from '@hqjs/babel-plugin-transform-json-imports';
+import babelTransformMixedImports from '@hqjs/babel-plugin-transform-mixed-imports';
 import babelTransformModules from '@hqjs/babel-plugin-transform-modules';
 import babelTransformNameImports from '@hqjs/babel-plugin-transform-name-imports';
 import babelTransformNamedImportToDestruct from '@hqjs/babel-plugin-transform-named-import-to-destructure';
@@ -26,6 +27,7 @@ export default async ctx => {
   const tsOptions = { legacy: isTS };
   if (!isTS) tsOptions.decoratorsBeforeExport = true;
   const plugins = [
+    babelTransformMixedImports,
     babelTransformExportDefault,
     babelTransformExportNamespace,
     [ babelTransformPaths, {

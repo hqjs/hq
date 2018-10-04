@@ -26,7 +26,7 @@ export default () => (ctx, next) => {
         version,
       };
       ctx.store.root = `./.dist/${target}/${name}/${ver}`;
-      ctx.store.baseURI = `https://${ctx.request.header[':authority']}`;
+      ctx.store.baseURI = ctx.request.origin;
       uaMap.set(uaString, ctx.store);
       if (ctx.app.debug) console.log(
         'Detect user agent',

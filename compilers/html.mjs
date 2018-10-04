@@ -2,20 +2,29 @@ import HTMLASTTransform from 'html-ast-transform';
 import fs from 'fs-extra';
 import { saveContent } from './utils.mjs';
 
-const { transform } = HTMLASTTransform;
+const { getAttr, h, transform, withAttr } = HTMLASTTransform;
 
 export default async ctx => {
   const content = await fs.readFile(ctx.srcPath, { encoding: 'utf8' });
+  const insertLR = ctx.path.includes('index.html');
   const res = await transform(content, {
+    fragment: false,
     replaceTags: {
-      script(node) {
-        const src = node.attrs.find(attr => attr.name === 'src');
-        if (src) {
-          const type = node.attrs.find(attr => attr.name === 'type');
-          if (type) type.value = 'module';
-          else node.attrs.unshift({ name: 'type', value: 'module' });
+      body(node) {
+        if (insertLR) {
+          const [ protocol, host ] = ctx.store.baseURI.split(':');
+          const lrScript = h('script', [{
+            name: 'src',
+            value: `${protocol}:${host}:${ctx.app.lrPort}/livereload.js?snipver=1`,
+          }]);
+          node.childNodes.push(lrScript);
         }
         return node;
+      },
+      script(node) {
+        return getAttr(node, 'src') ?
+          withAttr(node, 'type', 'module') :
+          node;
       },
     },
     trimWhitespace: false,

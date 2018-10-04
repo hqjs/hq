@@ -8,7 +8,6 @@ import errorHandler from './middlewares/error-handler.mjs';
 import etag from './middlewares/etag.mjs';
 import resolvePath from './middlewares/resolve-path.mjs';
 import resourceTable from './middlewares/resource-table.mjs';
-// import serverPush from './middlewares/server-push.mjs';
 
 export default () => compose([
   errorHandler(),
@@ -18,7 +17,6 @@ export default () => compose([
   resolvePath(),
   resourceTable(),
   etag(),
-  // serverPush(),
   build(),
   compress(),
 ]);
