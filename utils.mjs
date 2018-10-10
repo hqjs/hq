@@ -6,6 +6,7 @@ const WORKER_REXP = /\bworker\b/i;
 export const WATCH_EXTENSIONS = [
   'html',
   'css',
+  'scss',
   'sass',
   'less',
   'js',
@@ -29,6 +30,7 @@ export const isVendor = filePath => filePath.startsWith('/node_modules/');
 export const isSource = ext => [
   '.html',
   '.css',
+  '.scss',
   '.sass',
   '.less',
   '.js',
@@ -44,6 +46,7 @@ export const getResType = ext => {
     case '.jsx':
     case '.ts':
     case '.coffee': return '.js';
+    case '.scss':
     case '.sass':
     case '.less': return '.css';
     default: return ext;
@@ -59,6 +62,7 @@ export const getLinkType = (ext, name) => {
     case '.coffee':
     case '.mjs': return WORKER_REXP.test(name) ? 'worker' : 'script';
     case '.json': return 'script';
+    case '.scss':
     case '.sass':
     case '.less':
     case '.css': return 'style';

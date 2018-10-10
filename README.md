@@ -19,7 +19,7 @@ Supports all kind of frameworks:
 
 and many others.
 
-Supports `.js`, `.jsx`, `.mjs`, `.ts`, `.coffee`, `.json`, `.css`, `.html` formats and more to come.
+Supports `.js`, `.jsx`, `.mjs`, `.ts`, `.coffee`, `.json`, `.css`, `.scss`, `.scss`, `.less`, `.html` formats and more to come.
 
 Does not bundle.
 

@@ -53,17 +53,17 @@ const resolvePath = async ctx => {
       ctx.dirname = path.dirname(ctx.path);
     }
   } catch {
-    if (path.extname(ctx.path).toLocaleLowerCase() === '.map') {
-      // TODO resolve size from build here
-      ctx.size = 0;
-    } else {
-      try {
-        const ext = await findExistingExtension(ctx.srcPath);
-        if (isDirectory && ext === '') ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
-        ctx.path += ext;
-        ctx.srcPath += ext;
-        ctx.dirname = path.dirname(ctx.path);
-      } catch {
+    try {
+      const ext = await findExistingExtension(ctx.srcPath);
+      if (isDirectory && ext === '') ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
+      ctx.path += ext;
+      ctx.srcPath += ext;
+      ctx.dirname = path.dirname(ctx.path);
+    } catch {
+      if (path.extname(ctx.path).toLocaleLowerCase() === '.map') {
+        // TODO resolve size from build here
+        ctx.size = 0;
+      } else {
         ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
       }
     }

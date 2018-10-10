@@ -11,7 +11,10 @@ const buildSource = async ctx => {
       const { default: compileJS } = await import('../compilers/js.mjs');
       return compileJS(ctx);
     }
-    case '.css': {
+    case '.css':
+    case '.scss':
+    case '.sass':
+    case '.less': {
       const { default: compileCSS } = await import('../compilers/css.mjs');
       return compileCSS(ctx);
     }
