@@ -1,33 +1,43 @@
-import HTMLASTTransform from 'html-ast-transform';
 import fs from 'fs-extra';
+import pug from 'pug';
+import sanitizeHTML from 'sanitize-html';
 import { saveContent } from './utils.mjs';
 
-const { getAttr, h, transform, withAttr } = HTMLASTTransform;
-
 export default async ctx => {
-  const content = await fs.readFile(ctx.srcPath, { encoding: 'utf8' });
+  let content = await fs.readFile(ctx.srcPath, { encoding: 'utf8' });
   const insertLR = ctx.path.includes('index.html');
-  const res = await transform(content, {
-    fragment: false,
-    replaceTags: {
-      body(node) {
-        if (insertLR) {
-          const [ protocol, host ] = ctx.store.baseURI.split(':');
-          const lrScript = h('script', [{
-            name: 'src',
-            value: `${protocol}:${host}:${ctx.app.lrPort}/livereload.js?snipver=1`,
-          }]);
-          node.childNodes.push(lrScript);
-        }
-        return node;
-      },
-      script(node) {
-        return getAttr(node, 'src') ?
-          withAttr(node, 'type', 'module') :
-          node;
+  if (ctx.stats.ext === '.pug') content = pug.render(content, {
+    compileDebug: false,
+    filename: ctx.srcPath,
+    pretty: true,
+  });
+  // TODO: transform script and style content
+  let res = sanitizeHTML(content, {
+    allowedAttributes: false,
+    allowedTags: false,
+    parser: {
+      lowerCaseAttributeNames: false,
+      lowerCaseTags: false,
+    },
+    transformTags: {
+      script(tagName, attribs, text) {
+        return attribs.src == null ?
+          {
+            attribs,
+            tagName,
+            text,
+          } :
+          {
+            attribs: { ...attribs, type: 'module' },
+            tagName,
+          };
       },
     },
-    trimWhitespace: false,
   });
+  if (insertLR) {
+    const [ protocol, host ] = ctx.store.baseURI.split(':');
+    const lrScript = `<script src=${protocol}:${host}:${ctx.app.lrPort}/livereload.js?snipver=1></script>`;
+    res = res.replace(/<\/(\s*body)([^>]*)>/i, `\n${lrScript}\n</$1$2>`);
+  }
   return saveContent(res, ctx);
 };

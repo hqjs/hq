@@ -18,6 +18,7 @@ const buildSource = async ctx => {
       const { default: compileCSS } = await import('../compilers/css.mjs');
       return compileCSS(ctx);
     }
+    case '.pug':
     case '.html': {
       const { default: compileHTML } = await import('../compilers/html.mjs');
       return compileHTML(ctx);

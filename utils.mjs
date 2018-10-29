@@ -4,6 +4,7 @@ import path from 'path';
 const WORKER_REXP = /\bworker\b/i;
 
 export const WATCH_EXTENSIONS = [
+  'pug',
   'html',
   'css',
   'scss',
@@ -28,6 +29,7 @@ export const isTest = filePath => filePath.startsWith('/test/');
 export const isVendor = filePath => filePath.startsWith('/node_modules/');
 
 export const isSource = ext => [
+  '.pug',
   '.html',
   '.css',
   '.scss',
@@ -49,6 +51,7 @@ export const getResType = ext => {
     case '.scss':
     case '.sass':
     case '.less': return '.css';
+    case '.pug': return '.html';
     default: return ext;
   }
 };
@@ -66,6 +69,7 @@ export const getLinkType = (ext, name) => {
     case '.sass':
     case '.less':
     case '.css': return 'style';
+    case '.pug':
     case '.html': return 'document';
     case '.woff':
     case '.woff2': return 'font';

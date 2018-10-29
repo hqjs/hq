@@ -57,7 +57,7 @@ const startLRServer = async src => {
     port: lrPort,
   }, err => {
     if (err) throw err;
-    console.log(`Live-reload is listening on http://localhost:${lrPort}`);
+    console.log('Live-reload is listening');
   });
   lrServer.watch([
     path.resolve(ROOT, src),
@@ -83,8 +83,8 @@ const startServer = async src => {
 
   server.listen(port, 'localhost', err => {
     if (err) throw err;
-    console.log(`Listening on http://localhost:${port}`);
     console.log(`Start time: ${process.uptime()}`);
+    console.log(`Visit http://localhost:${port}`);
     import('./compilers/js.mjs');
     import('./compilers/css.mjs');
     import('./compilers/html.mjs');
