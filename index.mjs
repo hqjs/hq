@@ -21,15 +21,23 @@ const ROOT = path.resolve();
 const app = new Koa;
 
 const getSrc = async () => {
-  const packageJSON = await readPackageJSON(ROOT);
-  const srcExists = await fs.pathExists(path.join(ROOT, 'src'));
+  const [ packageJSON, rootHTML, srcHTML, srcExists ] = await Promise.all([
+    readPackageJSON(ROOT),
+    fs.pathExists(path.join(ROOT, './index.html')),
+    fs.pathExists(path.join(ROOT, 'src/index.html')),
+    fs.pathExists(path.join(ROOT, 'src')),
+  ]);
   return packageJSON.module ?
     path.dirname(packageJSON.module) :
-    srcExists ?
+    srcHTML ?
       'src' :
-      packageJSON.main ?
-        path.dirname(packageJSON.main) :
-        '.';
+      rootHTML ?
+        '.' :    
+        srcExists ?
+          'src' :
+          packageJSON.main ?
+            path.dirname(packageJSON.main) :
+            '.';
 };
 
 const startLRServer = async src => {
