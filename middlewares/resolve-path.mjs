@@ -63,6 +63,8 @@ const resolvePath = async ctx => {
       if (path.extname(ctx.path).toLocaleLowerCase() === '.map') {
         // TODO resolve size from build here
         ctx.size = 0;
+      } else if(ctx.path.endsWith('favicon.ico')) {
+        ctx.srcPath = '../hqjs.png';
       } else {
         ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
       }

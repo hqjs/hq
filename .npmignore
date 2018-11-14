@@ -18,6 +18,3 @@ node_modules/
 
 # CACHE
 *.sass-cache
-
-# LOGO
-hqjs-logo.png

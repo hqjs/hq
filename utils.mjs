@@ -12,7 +12,9 @@ export const WATCH_EXTENSIONS = [
   'less',
   'js',
   'jsx',
+  'es6',
   'mjs',
+  'vue',
   'json',
   'ts',
   'coffee',
@@ -38,6 +40,8 @@ export const isSource = ext => [
   '.js',
   '.jsx',
   '.mjs',
+  '.es6',
+  '.vue',
   '.ts',
   '.coffee',
   '.map',
@@ -47,6 +51,8 @@ export const getResType = ext => {
   switch (ext) {
     case '.jsx':
     case '.ts':
+    case '.es6':
+    case '.vue':
     case '.coffee': return '.js';
     case '.scss':
     case '.sass':
@@ -61,6 +67,8 @@ export const getLinkType = (ext, name) => {
   switch (ext) {
     case '.js':
     case '.jsx':
+    case '.es6':
+    case '.vue':
     case '.ts':
     case '.coffee':
     case '.mjs': return WORKER_REXP.test(name) ? 'worker' : 'script';
@@ -87,6 +95,8 @@ export const findExistingExtension = async filepath => {
   if (filepath.endsWith('index') && await fs.pathExists(`${filepath}.html`)) return '.html';
   else if (await fs.pathExists(`${filepath}.js`)) return '.js';
   else if (await fs.pathExists(`${filepath}.jsx`)) return '.jsx';
+  else if (await fs.pathExists(`${filepath}.es6`)) return '.es6';
+  else if (await fs.pathExists(`${filepath}.vue`)) return '.vue';
   else if (await fs.pathExists(`${filepath}.mjs`)) return '.mjs';
   else if (await fs.pathExists(`${filepath}.json`)) return '.json';
   else if (await fs.pathExists(`${filepath}.ts`)) return '.ts';

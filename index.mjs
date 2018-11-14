@@ -6,29 +6,15 @@ import fs from 'fs-extra';
 import getPort from 'get-port';
 import hq from './hq.mjs';
 import http from 'http';
+import info from './package.json';
 import livereload from 'livereload';
 import path from 'path';
-import { readPackageJSON } from './utils.mjs';
+import { WATCH_EXTENSIONS, readPackageJSON } from './utils.mjs';
+
+console.log(`(c) hqjs @ ${info.version}`);
 
 const LR_PORT = 35729;
 const PORT = 8080;
-const EXTENSIONS = [
-  'html',
-  'css',
-  'sass',
-  'less',
-  'js',
-  'jsx',
-  'mjs',
-  'json',
-  'ts',
-  'coffee',
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'svg',
-];
 
 const ROOT = path.resolve();
 
@@ -52,12 +38,11 @@ const startLRServer = async src => {
   const lrServer = livereload.createServer({
     applyCSSLive: false,
     applyImgLive: false,
-    extensions: EXTENSIONS,
+    extensions: WATCH_EXTENSIONS,
     host: 'localhost',
     port: lrPort,
   }, err => {
     if (err) throw err;
-    console.log('Live-reload is listening');
   });
   lrServer.watch([
     path.resolve(ROOT, src),
@@ -85,8 +70,6 @@ const startServer = async src => {
     if (err) throw err;
     console.log(`Start time: ${process.uptime()}`);
     console.log(`Visit http://localhost:${port}`);
-    import('./compilers/js.mjs');
-    import('./compilers/css.mjs');
     import('./compilers/html.mjs');
   });
 };

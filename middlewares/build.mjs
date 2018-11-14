@@ -1,34 +1,54 @@
-import { getCache, save } from '../compilers/utils.mjs';
+import { getCache, getInputSourceMap, save, saveContent } from '../compilers/utils.mjs';
 import HTTP_CODES from 'http-status-codes';
+import fs from 'fs-extra';
 
 const buildSource = async ctx => {
+  const content = await fs.readFile(ctx.srcPath, { encoding: 'utf8' });
+  let inputSourceMap = await getInputSourceMap(ctx.srcPath, content);
+  let res;
   // TODO make dynamic extension resolver
   switch (ctx.stats.ext) {
     case '.js':
     case '.jsx':
+    case '.es6':
+    case '.vue':
     case '.mjs':
     case '.ts': {
       const { default: compileJS } = await import('../compilers/js.mjs');
-      return compileJS(ctx);
+      res = await compileJS(ctx, content, inputSourceMap);
+      break;
     }
     case '.css':
     case '.scss':
     case '.sass':
     case '.less': {
       const { default: compileCSS } = await import('../compilers/css.mjs');
-      return compileCSS(ctx);
+      res = await compileCSS(ctx, content, inputSourceMap);
+      break;
     }
     case '.pug':
     case '.html': {
       const { default: compileHTML } = await import('../compilers/html.mjs');
-      return compileHTML(ctx);
+      res = await compileHTML(ctx, content);
+      break;
     }
     // default: {
     //   const { default: compileReplace } = await import('../compilers/replace.mjs');
-    //   return replace(ctx);
+    //   res = await replace(ctx, content);
+    //   break;
     // }
     default: return save(ctx);
   }
+  const { code, map } = res;
+  if (map) {
+    const { ua } = ctx.store;
+    const stats = ctx.app.table.touch(`${ctx.srcPath}.map`);
+    // TODO add map byte length here
+    const mapBuildPromise = saveContent(JSON.stringify(map), { path: `${ctx.path}.map`, stats, store: ctx.store });
+    stats.build.set(ua, mapBuildPromise);
+    // ctx.set('SourceMap', `${ctx.path}.map`);
+  }
+  return saveContent(code, ctx);
 };
 
 const makeBuild = ctx => ctx.stats.isSrc ?

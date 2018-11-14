@@ -1,5 +1,4 @@
-import { getBrowsersList, getInputSourceMap, saveContent } from './utils.mjs';
-import CoffeeScript from 'coffeescript';
+import { getBrowsersList, getInputSourceMap } from './utils.mjs';
 import babel from '@babel/core';
 import babelDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
 import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
@@ -21,7 +20,6 @@ import babelTransformParameterDecorators from 'babel-plugin-transform-function-p
 import babelTransformPaths from '@hqjs/babel-plugin-transform-paths';
 import babelTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
 import babelTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
-import fs from 'fs-extra';
 import patchAngularCompiler from '@hqjs/babel-plugin-patch-angular-fesm5-compiler';
 
 const getBabelSetup = ctx => {
@@ -47,7 +45,7 @@ const getBabelSetup = ctx => {
       'typeof window': 'object',
     }],
     babelMinifyDeadCode,
-    babelTransformNameImports,
+    [ babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
     babelTransformNamedImportToDestruct,
     babelTransformCssImport,
     [ babelTransformJsonImport, { dirname: ctx.stats.dirname }],
@@ -78,20 +76,28 @@ const getBabelSetup = ctx => {
   return { plugins, presets };
 };
 
-export default async ctx => {
-  const { ua } = ctx.store;
+export default async (ctx, content, sourceMap, skipSM) => {
   const { plugins, presets } = getBabelSetup(ctx);
-  let content = await fs.readFile(ctx.srcPath, { encoding: 'utf8' });
-  let inputSourceMap = await getInputSourceMap(ctx.srcPath, content);
+  let inputContent = content;
+  let inputSourceMap = sourceMap;
   if (ctx.stats.ext === '.coffee') {
-    content = CoffeeScript.compile(content, {
+    const { default: CoffeeScript } = await import('coffeescript');
+    inputContent = CoffeeScript.compile(inputContent, {
       header: false,
       inlineMap: true,
       sourceMap: inputSourceMap,
     });
-    inputSourceMap = await getInputSourceMap(ctx.srcPath, content);
+    inputSourceMap = await getInputSourceMap(ctx.srcPath, inputContent);
   }
-  const { code, map } = await babel.transform(content, {
+  if (ctx.stats.ext === '.vue') {
+    const { default: Vue } = await import('@vue/component-compiler');
+    const compiler = Vue.createDefaultCompiler();
+    const descriptor = compiler.compileToDescriptor(ctx.path, inputContent);
+    const res = Vue.assemble(compiler, ctx.path, descriptor);
+    inputContent = res.code;
+    inputSourceMap = res.map;
+  }
+  const { code, map } = await babel.transform(inputContent, {
     ast: false,
     babelrc: false,
     comments: true,
@@ -103,14 +109,9 @@ export default async ctx => {
     plugins,
     presets,
     sourceFileName: ctx.path,
-    sourceMaps: true,
+    sourceMaps: !skipSM,
   });
 
-  const codeSM = `${code}\n//# sourceMappingURL=${ctx.path}.map`;
-  const stats = ctx.app.table.touch(`${ctx.srcPath}.map`);
-  // TODO add map byte length here
-  const mapBuildPromise = saveContent(JSON.stringify(map), { path: `${ctx.path}.map`, stats, store: ctx.store });
-  stats.build.set(ua, mapBuildPromise);
-  // ctx.set('SourceMap', `${ctx.path}.map`);
-  return saveContent(codeSM, ctx);
+  const codeSM = skipSM ? code : `${code}\n//# sourceMappingURL=${ctx.path}.map`;
+  return { code: codeSM, map };
 };
