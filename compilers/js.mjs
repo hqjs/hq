@@ -108,7 +108,7 @@ export default async (ctx, content, sourceMap, skipSM) => {
     inputSourceMap,
     plugins,
     presets,
-    sourceFileName: ctx.path,
+    sourceFileName: `${ctx.originalPath}.map*`,
     sourceMaps: !skipSM,
   });
 

@@ -51,7 +51,7 @@ export default async (ctx, content) => {
           return node;
         } else {
           const ext = getScriptExtensionByType(node);
-          const [ nodeContent ] = node.content;
+          const nodeContent = node.content.join('');
           // TODO: check if sourcemaps can be usefull for inline scripts
           promises.push(compileJS({
             ...ctx,
@@ -76,7 +76,7 @@ export default async (ctx, content) => {
           content: [
             ...node.content,
             {
-              attrs: { src: `${protocol}:${host}:${ctx.app.lrPort}/livereload.js?snipver=1` },
+              attrs: { src: `${protocol}:${host}:${ctx.app.port}/hq-livereload.js` },
               tag: 'script',
             },
           ],

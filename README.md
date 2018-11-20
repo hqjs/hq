@@ -19,17 +19,18 @@
 # Installation
 
 Install it once with npm
-```bash
+```sh
 npm install -g @hqjs/hq
 ```
 
 # Usage
 Run inside project root
-```bash
+```sh
 hq
 ```
+it will find your source code and serve it.
 
-# Why is it better then existing tools?
+# Why hq?
 
 There are many development tools out there, including `browserify`, `webpack`, `rollup` and `parcel`, that provide development servers. But all of them rely on bundling. While bundling might still be usefull for production, it makes the development experience quite a struggle.
 
