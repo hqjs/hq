@@ -1,7 +1,16 @@
 import fs from 'fs-extra';
+import http from 'http';
 import path from 'path';
 
 const WORKER_REXP = /\bworker\b/i;
+
+export const HTTP_CODES = {
+  INTERNAL_SERVER_ERROR: 500,
+  NOT_ACCEPTABLE: 406,
+  NOT_FOUND: 404,
+  NOT_MODIFIED: 304,
+  OK: 200,
+};
 
 export const WATCH_EXTENSIONS = [
   'pug',
@@ -62,6 +71,7 @@ export const getResType = ext => {
   }
 };
 
+/* eslint-disable complexity */
 export const getLinkType = (ext, name) => {
   // TODO add other types https://w3c.github.io/preload/#as-attribute
   switch (ext) {
@@ -90,6 +100,7 @@ export const getLinkType = (ext, name) => {
     default: return '';
   }
 };
+/* eslint-enable complexity */
 
 export const findExistingExtension = async filepath => {
   if (filepath.endsWith('index') && await fs.pathExists(`${filepath}.html`)) return '.html';
@@ -128,4 +139,36 @@ export const resolvePackageMain = async (dir, { search = false } = {}) => {
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
   const packageJSON = await readPackageJSON(dirPath, { search: false });
   return packageJSON.module || packageJSON.main || `index${await findExistingExtension(`${dirPath}/index`)}`;
+};
+
+export const getServer = ({ app, host, port }) => new Promise((resolve, reject) => {
+  const server = http.createServer(app.callback());
+  server.unref();
+  server.on('error', reject);
+  server.listen(port, 'localhost', () => {
+    console.log(`Start time: ${process.uptime().toFixed(1)} s`);
+    console.log(`Visit http://localhost:${port}`);
+    import('./compilers/html.mjs');
+    resolve(server);
+  });
+}).catch(() => getServer({ app, host, port: port + 1 }));
+
+export const getSrc = async root => {
+  const [ packageJSON, rootHTML, srcHTML, srcExists ] = await Promise.all([
+    readPackageJSON(root),
+    fs.pathExists(path.join(root, './index.html')),
+    fs.pathExists(path.join(root, 'src/index.html')),
+    fs.pathExists(path.join(root, 'src')),
+  ]);
+  return packageJSON.module ?
+    path.dirname(packageJSON.module) :
+    srcHTML ?
+      'src' :
+      rootHTML ?
+        '.' :
+        srcExists ?
+          'src' :
+          packageJSON.main ?
+            path.dirname(packageJSON.main) :
+            '.';
 };

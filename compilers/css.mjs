@@ -19,16 +19,21 @@ export default async (ctx, content, sourceMap, skipSM) => {
     }),
     cssnano({
       preset: [
-        'advanced', { normalizeWhitespace: false },
+        'default', {
+          colormin: false,
+          discardComments: false,
+          normalizeWhitespace: false,
+          reduceInitial: false,
+          reduceTransforms: false,
+        },
       ],
     }),
   ];
-  const options = { from: undefined };
+  const options = { from: `${ctx.originalPath}.map*` };
   if (!skipSM) options.map = {
     annotation: `${ctx.path}.map`,
     inline: false,
   };
-  // TODO: prettyprint
   if (ctx.stats.ext === '.scss' || ctx.stats.ext === '.sass') {
     plugins.unshift(sass());
   } else if (ctx.stats.ext === '.less') {

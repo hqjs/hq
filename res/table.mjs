@@ -8,6 +8,11 @@ import path from 'path';
 const DOT_FILES = /(^|[/\\])\../;
 
 export default class Table extends Map {
+  constructor(reload) {
+    super();
+    this.reload = reload;
+  }
+
   touch(srcPath) {
     const current = this.get(srcPath);
     if (current !== undefined) {
@@ -27,9 +32,7 @@ export default class Table extends Map {
         dirname,
         ext,
         isSrc,
-        push: null,
         type,
-        // use real etag instead
         version: 0,
       };
       this.set(srcPath, value);
@@ -38,19 +41,23 @@ export default class Table extends Map {
   }
 
   watch(srcPaths) {
-    // TODO: trigger livereload
-    // TODO: try to rebuild on change
     const pattern = srcPaths.map(srcPath => `${path.resolve(srcPath)}/**/*.(${WATCH_EXTENSIONS.join('|')})`);
-    const watcher = chokidar.watch(pattern, { ignored: DOT_FILES });
+    const watcher = chokidar.watch(pattern, {
+      ignoreInitial: true,
+      ignored: DOT_FILES,
+    });
     watcher
       .on('add', async srcPath => {
         this.touch(srcPath);
+        this.reload();
       })
       .on('change', srcPath => {
         this.touch(srcPath);
+        this.reload();
       })
       .on('unlink', async srcPath => {
         this.delete(srcPath);
+        this.reload();
       });
     return this;
   }

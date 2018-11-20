@@ -1,4 +1,4 @@
-import HTTP_CODES from 'http-status-codes';
+import { HTTP_CODES } from '../utils.mjs';
 
 const MAX_AGE = 0;
 
