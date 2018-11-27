@@ -20,7 +20,7 @@ const ROOT = path.resolve();
   const src = await getSrc(ROOT);
   const babelRCPath = path.join(ROOT, '.babelrc');
   const useBabelRC = await fs.pathExists(babelRCPath);
-  const server = await getServer({ app, host: '127.0.0.1', port: PORT });
+  const server = await getServer({ app, host: '0.0.0.0', port: PORT });
   const { port } = server.address();
   const wss = new WebSocket.Server({ server });
 

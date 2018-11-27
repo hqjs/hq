@@ -1,6 +1,18 @@
 import fs from 'fs-extra';
 import http from 'http';
+import os from 'os';
 import path from 'path';
+
+const getLocalIP = () => {
+  const interfaces = os.networkInterfaces();
+  for (const intfs of Object.values(interfaces)) {
+    for (const intf of intfs) {
+      if (intf.family == 'IPv4' && !intf.internal) return intf;
+    }
+  }
+}
+
+const { address: LOCAL_IP} = getLocalIP();
 
 const WORKER_REXP = /\bworker\b/i;
 
@@ -145,9 +157,9 @@ export const getServer = ({ app, host, port }) => new Promise((resolve, reject) 
   const server = http.createServer(app.callback());
   server.unref();
   server.on('error', reject);
-  server.listen(port, 'localhost', () => {
+  server.listen(port, host, () => {
     console.log(`Start time: ${process.uptime().toFixed(1)} s`);
-    console.log(`Visit http://localhost:${port}`);
+    console.log(`Visit http://${LOCAL_IP}:${port}`);
     import('./compilers/html.mjs');
     resolve(server);
   });
