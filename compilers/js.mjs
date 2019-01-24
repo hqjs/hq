@@ -6,6 +6,7 @@ import babelPresetEnv from '@babel/preset-env';
 import babelPresetFlow from '@babel/preset-flow';
 import babelPresetReact from '@babel/preset-react';
 import babelTransformClassProperties from '@babel/plugin-proposal-class-properties';
+import babelTransformPrivateMethods from '@babel/plugin-proposal-private-methods';
 import babelTransformCssImport from '@hqjs/babel-plugin-transform-css-imports';
 import babelTransformDecorators from '@babel/plugin-proposal-decorators';
 import babelTransformDefine from '@hqjs/babel-plugin-transform-define';
@@ -16,7 +17,7 @@ import babelTransformMixedImports from '@hqjs/babel-plugin-transform-mixed-impor
 import babelTransformModules from '@hqjs/babel-plugin-transform-modules';
 import babelTransformNameImports from '@hqjs/babel-plugin-transform-name-imports';
 import babelTransformNamedImportToDestruct from '@hqjs/babel-plugin-transform-named-import-to-destructure';
-import babelTransformParameterDecorators from 'babel-plugin-transform-function-parameter-decorators';
+import babelTransformParameterDecorators from '@hqjs/babel-plugin-transform-parameter-decorators';
 import babelTransformPaths from '@hqjs/babel-plugin-transform-paths';
 import babelTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
 import babelTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
@@ -38,6 +39,7 @@ const getBabelSetup = ctx => {
     [ babelTransformDecorators, tsOptions ],
     babelTransformParameterDecorators,
     [ babelTransformClassProperties, { loose: true }],
+    [ babelTransformPrivateMethods, { loose: true }],
     [ babelTransformDefine, {
       // TODO make it conditional
       'import.meta': { url: ctx.path },

@@ -53,6 +53,7 @@ export default class Table extends Map {
       })
       .on('change', srcPath => {
         this.touch(srcPath);
+        this.touch(`${srcPath}.map`);
         this.reload();
       })
       .on('unlink', async srcPath => {

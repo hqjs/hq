@@ -159,7 +159,7 @@ export const getServer = ({ app, host, port }) => new Promise((resolve, reject) 
   server.on('error', reject);
   server.listen(port, host, () => {
     console.log(`Start time: ${process.uptime().toFixed(1)} s`);
-    console.log(`Visit http://${LOCAL_IP}:${port}`);
+    console.log(`Visit http://localhost:${port}\nor http://${LOCAL_IP}:${port} within local network`);
     import('./compilers/html.mjs');
     resolve(server);
   });

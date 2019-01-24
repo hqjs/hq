@@ -55,8 +55,13 @@ const makeBuild = ctx => ctx.stats.isSrc ?
   save(ctx);
 
 const getBuild = async ctx => {
-  const { build, ext } = ctx.stats;
+  const { ext } = ctx.stats;
   const { ua } = ctx.store;
+  if (ext === '.map') {
+    const { build: srcBuild} = ctx.app.table.get(ctx.srcPath.slice(0, -4)) || {};
+    if (srcBuild) await srcBuild.get(ua);
+  }
+  const { build } = ctx.stats;
   const isDirty = build.isDirty(ua);
   if (isDirty) {
     if (ext === '.map') ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);

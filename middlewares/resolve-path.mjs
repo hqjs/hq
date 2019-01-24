@@ -49,6 +49,7 @@ const resolvePath = async ctx => {
     try {
       const relPath = isTest(ctx.path) || isVendor(ctx.path) ? `.${ctx.path}` : `${ctx.app.src}${ctx.path}`;
       ctx.srcPath = path.resolve(relPath);
+      ctx.srcPath = await fs.realpath(ctx.srcPath);
       const stats = await fs.lstat(ctx.srcPath);
       ctx.size = stats.size;
       isDirectory = stats.isDirectory();
@@ -69,6 +70,9 @@ const resolvePath = async ctx => {
         ctx.dirname = path.dirname(ctx.path);
       } catch {
         if (path.extname(ctx.path).toLocaleLowerCase() === '.map') {
+          const srcPath = await fs.realpath(ctx.srcPath.slice(0, -4));
+          ctx.srcPath = `${srcPath}.map`;
+          ctx.dirname = path.dirname(ctx.path);
           // TODO: resolve size from build here
           ctx.size = 0;
         } else if(ctx.path.endsWith('favicon.ico')) {
