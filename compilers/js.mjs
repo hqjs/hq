@@ -5,6 +5,7 @@ import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
 import babelPresetEnv from '@babel/preset-env';
 import babelPresetFlow from '@babel/preset-flow';
 import babelPresetReact from '@babel/preset-react';
+import babelSyntaxImportMeta from '@babel/plugin-syntax-import-meta';
 import babelTransformClassProperties from '@babel/plugin-proposal-class-properties';
 import babelTransformPrivateMethods from '@babel/plugin-proposal-private-methods';
 import babelTransformCssImport from '@hqjs/babel-plugin-transform-css-imports';
@@ -29,6 +30,7 @@ const getBabelSetup = ctx => {
   const tsOptions = { legacy: isTS };
   if (!isTS) tsOptions.decoratorsBeforeExport = true;
   const plugins = [
+    babelSyntaxImportMeta,
     babelTransformMixedImports,
     babelTransformExportDefault,
     babelTransformExportNamespace,
@@ -48,7 +50,10 @@ const getBabelSetup = ctx => {
     }],
     babelMinifyDeadCode,
     [ babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
-    babelTransformNamedImportToDestruct,
+    [ babelTransformNamedImportToDestruct, {
+      baseURI: ctx.store.baseURI,
+      map: '.map*',
+    } ],
     babelTransformCssImport,
     [ babelTransformJsonImport, { dirname: ctx.stats.dirname }],
     babelTransformModules,
