@@ -34,35 +34,35 @@ const getBabelSetup = ctx => {
     babelTransformMixedImports,
     babelTransformExportDefault,
     babelTransformExportNamespace,
-    [ babelTransformPaths, {
+    [babelTransformPaths, {
       baseURI: ctx.store.baseURI,
       dirname: ctx.dirname,
     }],
-    [ babelTransformDecorators, tsOptions ],
+    [babelTransformDecorators, tsOptions],
     babelTransformParameterDecorators,
-    [ babelTransformClassProperties, { loose: true }],
-    [ babelTransformPrivateMethods, { loose: true }],
-    [ babelTransformDefine, {
+    [babelTransformClassProperties, { loose: true }],
+    [babelTransformPrivateMethods, { loose: true }],
+    [babelTransformDefine, {
       // TODO make it conditional
       'import.meta': { url: ctx.path },
       'process.env.NODE_ENV': 'development',
       'typeof window': 'object',
     }],
     babelMinifyDeadCode,
-    [ babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
-    [ babelTransformNamedImportToDestruct, {
+    [babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
+    [babelTransformNamedImportToDestruct, {
       baseURI: ctx.store.baseURI,
       map: '.map*',
-    } ],
+    }],
     babelTransformCssImport,
-    [ babelTransformJsonImport, { dirname: ctx.stats.dirname }],
+    [babelTransformJsonImport, { dirname: ctx.stats.dirname }],
     babelTransformModules,
   ];
   if (ctx.path.endsWith('compiler/fesm5/compiler.js')) {
     plugins.unshift(patchAngularCompiler);
   }
   const presets = [
-    [ babelPresetEnv, {
+    [babelPresetEnv, {
       ignoreBrowserslistConfig: false,
       loose: true,
       modules: false,
@@ -72,7 +72,15 @@ const getBabelSetup = ctx => {
     }],
   ];
   if (isTS) {
-    plugins.unshift(babelTransformTypescript, babelTypeMetadata, babelDecoratorMetadata);
+    plugins.unshift(
+      [babelTransformTypescript, {
+        allowNamespaces: true,
+        isTSX: false,
+        jsxPragma: 'React'
+      }],
+      babelTypeMetadata,
+      babelDecoratorMetadata
+    );
   } else {
     presets.push([
       babelPresetReact,
@@ -110,7 +118,7 @@ export default async (ctx, content, sourceMap, skipSM) => {
     comments: true,
     compact: false,
     configFile: false,
-    extends: ctx.app.babelRC,
+    extends: ctx.app.babelrc,
     filename: ctx.path,
     inputSourceMap,
     plugins,

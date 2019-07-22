@@ -58,7 +58,7 @@ const getBuild = async ctx => {
   const { ext } = ctx.stats;
   const { ua } = ctx.store;
   if (ext === '.map') {
-    const { build: srcBuild} = ctx.app.table.get(ctx.srcPath.slice(0, -4)) || {};
+    const { build: srcBuild } = ctx.app.table.get(ctx.srcPath.slice(0, -4)) || {};
     if (srcBuild) await srcBuild.get(ua);
   }
   const { build } = ctx.stats;

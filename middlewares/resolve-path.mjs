@@ -75,7 +75,7 @@ const resolvePath = async ctx => {
           ctx.dirname = path.dirname(ctx.path);
           // TODO: resolve size from build here
           ctx.size = 0;
-        } else if(ctx.path.endsWith('favicon.ico')) {
+        } else if (ctx.path.endsWith('favicon.ico')) {
           ctx.srcPath = `${scriptDir}/../hqjs.png`;
           ctx.dirname = path.dirname(ctx.path);
           const stats = await fs.lstat(ctx.srcPath);
