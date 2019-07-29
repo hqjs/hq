@@ -367,6 +367,7 @@
       "warn",
       "never"
     ],
+    "require-atomic-updates": "off",
     "semi": "warn",
     "semi-spacing": [
       "warn",

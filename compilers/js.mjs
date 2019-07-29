@@ -1,4 +1,10 @@
-import { getBrowsersList, getInputSourceMap } from './utils.mjs';
+import {
+  getBrowsersList,
+  getInputSourceMap,
+  getProjectModulePath,
+  getScriptExtensionByAttrs,
+  getStyleExtensionByAttrs,
+} from './utils.mjs';
 import babel from '@babel/core';
 import babelDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
 import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
@@ -23,41 +29,48 @@ import babelTransformPaths from '@hqjs/babel-plugin-transform-paths';
 import babelTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
 import babelTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
 import patchAngularCompiler from '@hqjs/babel-plugin-patch-angular-fesm5-compiler';
+import path from 'path';
+import compileCSS from './css.mjs';
 
-const getBabelSetup = ctx => {
+const getBabelSetup = (ctx, skipHQTrans) => {
   const { ua } = ctx.store;
+  // TODO: support .tsx
   const isTS = ctx.stats.ext === '.ts';
   const tsOptions = { legacy: isTS };
   if (!isTS) tsOptions.decoratorsBeforeExport = true;
-  const plugins = [
+  const prePlugins = [
     babelSyntaxImportMeta,
-    babelTransformMixedImports,
     babelTransformExportDefault,
     babelTransformExportNamespace,
-    [babelTransformPaths, {
-      baseURI: ctx.store.baseURI,
-      dirname: ctx.dirname,
-    }],
     [babelTransformDecorators, tsOptions],
     babelTransformParameterDecorators,
     [babelTransformClassProperties, { loose: true }],
     [babelTransformPrivateMethods, { loose: true }],
     [babelTransformDefine, {
-      // TODO make it conditional
+      // TODO: make it conditional
       'import.meta': { url: ctx.path },
       'process.env.NODE_ENV': 'development',
       'typeof window': 'object',
     }],
     babelMinifyDeadCode,
+    babelTransformModules
+  ];
+  const plugins = [
+    babelSyntaxImportMeta,
+    babelTransformMixedImports,
+    [babelTransformPaths, {
+      baseURI: ctx.store.baseURI,
+      dirname: ctx.dirname,
+    }],
     [babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
     [babelTransformNamedImportToDestruct, {
       baseURI: ctx.store.baseURI,
       map: '.map*',
     }],
     babelTransformCssImport,
-    [babelTransformJsonImport, { dirname: ctx.stats.dirname }],
-    babelTransformModules,
+    [babelTransformJsonImport, { dirname: ctx.stats.dirname }]
   ];
+
   if (ctx.path.endsWith('compiler/fesm5/compiler.js')) {
     plugins.unshift(patchAngularCompiler);
   }
@@ -68,15 +81,18 @@ const getBabelSetup = ctx => {
       modules: false,
       shippedProposals: true,
       targets: { browsers: getBrowsersList(ua) },
-      // useBuiltIns: 'usage',
+      // FIXME: proposal: true - seems like core-js has some circular dependencies
+      useBuiltIns: 'usage',
+      corejs: { version: 3, proposals: false },
     }],
   ];
   if (isTS) {
-    plugins.unshift(
+    prePlugins.unshift(
       [babelTransformTypescript, {
         allowNamespaces: true,
         isTSX: false,
-        jsxPragma: 'React'
+        jsxPragma: 'React',
+        removeUnusedImports: !skipHQTrans
       }],
       babelTypeMetadata,
       babelDecoratorMetadata
@@ -88,11 +104,13 @@ const getBabelSetup = ctx => {
     ], babelPresetFlow);
   }
 
-  return { plugins, presets };
+  return { plugins: skipHQTrans ? [] : plugins, prePlugins, presets };
 };
 
-export default async (ctx, content, sourceMap, skipSM) => {
-  const { plugins, presets } = getBabelSetup(ctx);
+const compileJS = async (ctx, content, sourceMap, skipSM = false, skipHQTrans = false) => {
+  let scriptIndex = 0;
+  let styleIndex = 0;
+  const { plugins, prePlugins, presets } = getBabelSetup(ctx, skipHQTrans);
   let inputContent = content;
   let inputSourceMap = sourceMap;
   if (ctx.stats.ext === '.coffee') {
@@ -112,17 +130,74 @@ export default async (ctx, content, sourceMap, skipSM) => {
     inputContent = res.code;
     inputSourceMap = res.map;
   }
-  const { code, map } = await babel.transform(inputContent, {
-    ast: false,
+  if (ctx.stats.ext === '.svelte') {
+    // TODO: check svelte version from project package.json
+    // TODO: check and add necessary compiller options for svelte version 2
+    const { default: svelte } = await import(getProjectModulePath(ctx.app.root, 'svelte/compiler.js'));
+    const pre = await svelte.preprocess(content, {
+      //TODO: support script preprocessors, do not transform imports
+      script({ content, attributes }) {
+        const ext = getScriptExtensionByAttrs(attributes);
+        if (!['.ts', '.coffee', '.jsx'].includes(ext)) return;
+        // TODO: check if sourcemaps can be usefull for inline scripts
+        return compileJS({
+          ...ctx,
+          path: `${ctx.path}-${scriptIndex++}${ext}`,
+          stats: {
+            ...ctx.stats,
+            ext,
+          },
+        }, content, false, true, true);
+      },
+      style({ content, attributes }) {
+        const ext = getStyleExtensionByAttrs(attributes);
+        if (!['.sass', '.scss', '.less'].includes(ext)) return;
+        return compileCSS({
+          ...ctx,
+          path: `${ctx.path}$${styleIndex++}${ext}`,
+          stats: {
+            ...ctx.stats,
+            ext,
+          },
+        }, content, false, true);
+      },
+    });
+    const res = svelte.compile(pre.code, {
+      format: 'esm',
+      filename: ctx.path,
+      name: path.basename(ctx.path, '.svelte'),
+    });
+    inputContent = res.js.code;
+    inputSourceMap = res.js.map;
+    inputSourceMap.sources[0] = `${ctx.originalPath}.map*`;
+  }
+  const { ast } = await babel.transformAsync(inputContent, {
+    ast: true,
     babelrc: false,
+    code: false,
     comments: true,
     compact: false,
     configFile: false,
     extends: ctx.app.babelrc,
     filename: ctx.path,
     inputSourceMap,
-    plugins,
+    plugins: prePlugins,
     presets,
+    sourceFileName: `${ctx.originalPath}.map*`,
+    sourceMaps: !skipSM,
+  });
+
+  const { code, map } = await babel.transformFromAstAsync(ast, inputContent, {
+    ast: false,
+    babelrc: false,
+    code: true,
+    comments: true,
+    compact: false,
+    configFile: false,
+    filename: ctx.path,
+    inputSourceMap,
+    plugins,
+    presets: [],
     sourceFileName: `${ctx.originalPath}.map*`,
     sourceMaps: !skipSM,
   });
@@ -130,3 +205,5 @@ export default async (ctx, content, sourceMap, skipSM) => {
   const codeSM = skipSM ? code : `${code}\n//# sourceMappingURL=${ctx.path}.map`;
   return { code: codeSM, map };
 };
+
+export default compileJS;

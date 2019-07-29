@@ -12,10 +12,11 @@ const buildSource = async ctx => {
     case '.jsx':
     case '.es6':
     case '.vue':
+    case '.svelte':
     case '.mjs':
     case '.ts': {
       const { default: compileJS } = await import('../compilers/js.mjs');
-      res = await compileJS(ctx, content, inputSourceMap);
+      res = await compileJS(ctx, content, inputSourceMap, ctx.path.includes('/hq-livereload.js'));
       break;
     }
     case '.css':
@@ -43,7 +44,7 @@ const buildSource = async ctx => {
   if (map) {
     const { ua } = ctx.store;
     const stats = ctx.app.table.touch(`${ctx.srcPath}.map`);
-    // TODO add map byte length here
+    // TODO: add map byte length here
     const mapBuildPromise = saveContent(JSON.stringify(map), { path: `${ctx.path}.map`, stats, store: ctx.store });
     stats.build.set(ua, mapBuildPromise);
   }

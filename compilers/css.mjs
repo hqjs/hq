@@ -5,7 +5,7 @@ import postcss from 'postcss';
 import postcssPresetEnv from 'postcss-preset-env';
 import sass from 'postcss-node-sass';
 
-export default async (ctx, content, sourceMap, skipSM) => {
+export default async (ctx, content, sourceMap, skipSM = false) => {
   const { ua } = ctx.store;
   // const replaced = await replaceRelativePath(ctx);
   const plugins = [
@@ -34,11 +34,19 @@ export default async (ctx, content, sourceMap, skipSM) => {
     annotation: `${ctx.path}.map`,
     inline: false,
   };
-  if (ctx.stats.ext === '.scss' || ctx.stats.ext === '.sass') {
+  if (ctx.stats.ext === '.scss') {
+    const { default: syntaxSCSS } = await import('postcss-scss');
+    options.syntax = syntaxSCSS;
+    plugins.unshift(sass());
+  } else if (ctx.stats.ext === '.sass') {
+    const { default: syntaxSASS } = await import('postcss-sass');
+    options.syntax = syntaxSASS;
     plugins.unshift(sass());
   } else if (ctx.stats.ext === '.less') {
-    plugins.unshift(less());
+    const { default: syntaxLESS } = await import('postcss-less');
+    options.syntax = syntaxLESS;
     options.parser = less.parser;
+    plugins.unshift(less());
   }
   const { css, map } = await postcss(plugins)
     .process(content, options);

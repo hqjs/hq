@@ -1,27 +1,7 @@
 import posthtml from 'posthtml';
 import compileJS from './js.mjs';
 import compileCSS from './css.mjs';
-
-const getScriptExtensionByType = node => {
-  if (node.attrs == null || node.attrs.type) return '.js';
-  switch (node.attrs.type) {
-    case 'application/coffeescript':
-    case 'text/coffeescript': return '.coffee';
-    case 'application/typescript':
-    case 'text/typescript': return '.ts';
-    default: return '.js';
-  }
-};
-
-const getStyleExtensionByType = node => {
-  if (node.attrs == null || node.attrs.type) return '.css';
-  switch (node.attrs.type) {
-    case 'text/scss': return '.scss';
-    case 'text/sass': return '.sass';
-    case 'text/less': return '.less';
-    default: return '.css';
-  }
-};
+import { getScriptExtensionByAttrs, getStyleExtensionByAttrs } from './utils.mjs';
 
 export default async (ctx, content) => {
   const insertLR = ctx.path.includes('index.html');
@@ -50,7 +30,7 @@ export default async (ctx, content) => {
           };
           return node;
         } else {
-          const ext = getScriptExtensionByType(node);
+          const ext = getScriptExtensionByAttrs(node.attrs);
           const nodeContent = node.content.join('');
           // TODO: check if sourcemaps can be usefull for inline scripts
           promises.push(compileJS({
@@ -61,7 +41,7 @@ export default async (ctx, content) => {
               ext,
             },
           }, nodeContent, false, true).then(({ code }) => {
-            node.content = [ code ];
+            node.content = [code];
           }));
           return node;
         }
@@ -70,7 +50,7 @@ export default async (ctx, content) => {
     },
     tree => {
       if (insertLR) {
-        const [ protocol, host ] = ctx.store.baseURI.split(':');
+        const [protocol, host] = ctx.store.baseURI.split(':');
         tree.match({ tag: 'body' }, node => ({
           ...node,
           content: [
@@ -86,8 +66,8 @@ export default async (ctx, content) => {
     tree => {
       const promises = [];
       tree.match({ tag: 'style' }, node => {
-        const ext = getStyleExtensionByType(node);
-        const [ nodeContent ] = node.content;
+        const ext = getStyleExtensionByAttrs(node.attrs);
+        const [nodeContent] = node.content;
         promises.push(compileCSS({
           ...ctx,
           path: `${ctx.path}$${styleIndex++}${ext}`,
@@ -96,7 +76,7 @@ export default async (ctx, content) => {
             ext,
           },
         }, nodeContent, false, true).then(({ code }) => {
-          node.content = [ code ];
+          node.content = [code];
         }));
         return node;
       });

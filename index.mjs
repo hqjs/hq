@@ -9,6 +9,8 @@ import hq from './hq.mjs';
 import info from './package.json';
 import path from 'path';
 
+const HQ_ROOT = path.dirname(import.meta.url.slice('file://'.length));
+
 const PORT = 8080;
 
 const ROOT = path.resolve();
@@ -38,11 +40,13 @@ console.log(`(c) hqjs @ ${info.version}`);
     }
   };
 
+  app.hqroot = HQ_ROOT;
   app.port = port;
+  app.root = ROOT;
   app.src = src;
   app.babelrc = useBabelRC ? babelRCPath : undefined;
   app.debug = process.env.NODE_ENV === 'debug';
-  app.table = new Table(reload).watch([ src, './node_modules' ]);
+  app.table = new Table(reload).watch([src, './node_modules']);
   app.startTime = Date.now();
 
   app.use(hq());

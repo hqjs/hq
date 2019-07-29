@@ -56,3 +56,43 @@ export const getInputSourceMap = async (srcPath, code) => {
     return false;
   }
 };
+
+export const getProjectModulePath = (root, modName) =>
+  path.join(root, 'node_modules', modName);
+
+export const getScriptExtensionByAttrs = attrs => {
+  if (!attrs) return '.js';
+  if (attrs.type) switch (attrs.type) {
+    case 'application/coffeescript':
+    case 'text/coffeescript': return '.coffee';
+    case 'application/typescript':
+    case 'text/typescript': return '.ts';
+    case 'application/jsx':
+    case 'text/jsx': return '.jsx';
+    default: return '.js';
+  }
+  if (attrs.lang) switch (attrs.lang) {
+    case 'coffeescript': return '.coffee';
+    case 'typescript': return '.ts';
+    case 'jsx': return '.jsx';
+    default: return '.js';
+  }
+  return '.js';
+};
+
+export const getStyleExtensionByAttrs = attrs => {
+  if (!attrs) return '.css';
+  if (attrs.type) switch (attrs.type) {
+    case 'text/scss': return '.scss';
+    case 'text/sass': return '.sass';
+    case 'text/less': return '.less';
+    default: return '.css';
+  }
+  if (attrs.lang) switch (attrs.lang) {
+    case 'scss': return '.scss';
+    case 'sass': return '.sass';
+    case 'less': return '.less';
+    default: return '.css';
+  }
+  return '.css';
+};

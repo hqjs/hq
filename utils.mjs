@@ -12,7 +12,7 @@ const getLocalIP = () => {
   }
 }
 
-const { address: LOCAL_IP} = getLocalIP();
+const { address: LOCAL_IP } = getLocalIP();
 
 const WORKER_REXP = /\bworker\b/i;
 
@@ -36,6 +36,7 @@ export const WATCH_EXTENSIONS = [
   'es6',
   'mjs',
   'vue',
+  'svelte',
   'json',
   'ts',
   'coffee',
@@ -51,6 +52,8 @@ export const isTest = filePath => filePath.startsWith('/test/');
 
 export const isVendor = filePath => filePath.startsWith('/node_modules/');
 
+export const isPolyfill = filePath => filePath.startsWith('/node_modules/core-js/');
+
 export const isSource = ext => [
   '.pug',
   '.html',
@@ -63,6 +66,7 @@ export const isSource = ext => [
   '.mjs',
   '.es6',
   '.vue',
+  '.svelte',
   '.ts',
   '.coffee',
   '.map',
@@ -74,6 +78,7 @@ export const getResType = ext => {
     case '.ts':
     case '.es6':
     case '.vue':
+    case '.svelte':
     case '.coffee': return '.js';
     case '.scss':
     case '.sass':
@@ -91,6 +96,7 @@ export const getLinkType = (ext, name) => {
     case '.jsx':
     case '.es6':
     case '.vue':
+    case '.svelte':
     case '.ts':
     case '.coffee':
     case '.mjs': return WORKER_REXP.test(name) ? 'worker' : 'script';
@@ -116,14 +122,15 @@ export const getLinkType = (ext, name) => {
 
 export const findExistingExtension = async filepath => {
   if (filepath.endsWith('index') && await fs.pathExists(`${filepath}.html`)) return '.html';
-  else if (await fs.pathExists(`${filepath}.js`)) return '.js';
   else if (await fs.pathExists(`${filepath}.jsx`)) return '.jsx';
-  else if (await fs.pathExists(`${filepath}.es6`)) return '.es6';
   else if (await fs.pathExists(`${filepath}.vue`)) return '.vue';
+  else if (await fs.pathExists(`${filepath}.svelte`)) return '.svelte';
   else if (await fs.pathExists(`${filepath}.mjs`)) return '.mjs';
   else if (await fs.pathExists(`${filepath}.json`)) return '.json';
   else if (await fs.pathExists(`${filepath}.ts`)) return '.ts';
   else if (await fs.pathExists(`${filepath}.coffee`)) return '.coffee';
+  else if (await fs.pathExists(`${filepath}.es6`)) return '.es6';
+  else if (await fs.pathExists(`${filepath}.js`)) return '.js';
   else if (await fs.pathExists(filepath)) return '';
   else if (!filepath.endsWith('index') && await fs.pathExists(`${filepath}.html`)) return '.html';
   else throw new Error(`File ${filepath} not found`);
@@ -166,7 +173,7 @@ export const getServer = ({ app, host, port }) => new Promise((resolve, reject) 
 }).catch(() => getServer({ app, host, port: port + 1 }));
 
 export const getSrc = async root => {
-  const [ packageJSON, rootHTML, srcHTML, srcExists ] = await Promise.all([
+  const [packageJSON, rootHTML, srcHTML, srcExists] = await Promise.all([
     readPackageJSON(root),
     fs.pathExists(path.join(root, './index.html')),
     fs.pathExists(path.join(root, 'src/index.html')),
