@@ -9,8 +9,8 @@
 
 * 🎓 You already know it - it is just a static server that delivers your application code files
 * 🏂 Zero configuration - one command and you are good to go
-* 🏋️ Supports all kinds of frameworks: Polymer, Vue, React, Angular and many others out of the box
-* 😎 Understands all popular formats `.js`, `.jsx`, `.mjs`, `.es6`, `.vue`, `.ts`, `.coffee`, `.json`, `.css`, `.scss`, `.sass`, `.less`, `.html` and `.pug`
+* 🏋️ Supports all kinds of frameworks: Polymer, Svelte, Vue, React, Angular and many others out of the box
+* 😎 Understands all popular formats `.js`, `.jsx`, `.mjs`, `.es6`, `.svelte`, `.vue`, `.ts`, `.coffee`, `.json`, `.css`, `.scss`, `.sass`, `.less`, `.html` and `.pug`
 * 🎁️ Delivers without bundling to reflect project structure in the browser and make it easier to understand and develop
 * 🦋 Makes debugging a pleasure - NO MORE missing sourcemaps and obfuscated bundles, situations when you can't put a breakpoint on the line or expression, ugly webpack names behind the code and empty debugging tooltips
 * 🕸 Relies on the latest web standards - so you can use cutting edge features even if your browser lacks them
@@ -71,7 +71,9 @@ First of all, we need to add our global style file and script to the head and bo
 
 Second is a very angular specific problem - it depends on `zones` and `Reflect.metadata` APIs that are on very early stages and are not supported by `hq` out of the box. In fact angular includes them in file `polyfills.ts` and adds the file to your build. So we are going to use the file and import it on top of `main.ts`
 ```js
-import './polyfills.ts';
+import 'core-js/proposals/reflect-metadata';
+import 'zone.js/dist/zone';
+import 'zone.js/dist/zone-patch-canvas';
 ...
 ```
 
