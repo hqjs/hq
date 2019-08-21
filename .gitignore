@@ -60,5 +60,8 @@ typings/
 # next.js build output
 .next
 
+# System
+.DS_Store
+
 # No package-lock
 package-lock.json

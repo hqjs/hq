@@ -368,7 +368,10 @@
       "never"
     ],
     "require-atomic-updates": "off",
-    "semi": "warn",
+    "semi": [
+      "warn",
+      "always"
+    ],
     "semi-spacing": [
       "warn",
       {

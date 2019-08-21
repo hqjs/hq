@@ -86,7 +86,7 @@ const resolvePath = async ctx => {
         `.${ctx.path}` :
         `${ctx.app.src}${ctx.path}`;
     // realpath throws if file does not exists that's why we change srcPath
-    ctx.srcPath = path.resolve(relPath);
+    ctx.srcPath = path.resolve(ctx.app.root, relPath);
     ctx.srcPath = await fs.realpath(ctx.srcPath);
     const stats = await fs.lstat(ctx.srcPath);
     ctx.size = stats.size;

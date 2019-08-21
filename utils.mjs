@@ -164,6 +164,7 @@ export const getServer = ({ app, host, port }) => new Promise((resolve, reject) 
   const server = http.createServer(app.callback());
   server.unref();
   server.on('error', reject);
+  server.localIP = LOCAL_IP;
   server.listen(port, host, () => {
     console.log(`Start time: ${process.uptime().toFixed(1)} s`);
     console.log(`Visit http://localhost:${port}\nor http://${LOCAL_IP}:${port} within local network`);

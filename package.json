@@ -1,8 +1,8 @@
 {
   "name": "@hqjs/hq",
-  "version": "0.0.10",
+  "version": "0.0.11-dev",
   "description": "Universal static web server for frontend development",
-  "main": "index.mjs",
+  "main": "server.mjs",
   "scripts": {
     "dev": "nodemon --experimental-modules index.mjs",
     "start": "./index.mjs"
@@ -50,7 +50,7 @@
     "@hqjs/babel-plugin-patch-angular-fesm5-compiler": "^0.0.1",
     "@hqjs/babel-plugin-transform-css-imports": "^0.0.2",
     "@hqjs/babel-plugin-transform-define": "^0.0.1",
-    "@hqjs/babel-plugin-transform-json-imports": "^0.0.1",
+    "@hqjs/babel-plugin-transform-json-imports": "^0.0.2",
     "@hqjs/babel-plugin-transform-mixed-imports": "^0.0.1",
     "@hqjs/babel-plugin-transform-modules": "^0.0.2",
     "@hqjs/babel-plugin-transform-name-imports": "^0.0.3",
@@ -88,7 +88,6 @@
   },
   "devDependencies": {
     "eslint": "^6.1.0",
-    "eslint-config-recommended": "^4.0.0",
     "nodemon": "^1.19.1"
   },
   "publishConfig": {

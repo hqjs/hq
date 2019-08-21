@@ -74,6 +74,7 @@ const getBabelSetup = (ctx, skipHQTrans) => {
   if (ctx.path.endsWith('compiler/fesm5/compiler.js')) {
     plugins.unshift(patchAngularCompiler);
   }
+  const isPoly = ctx.path.startsWith('/node_modules/core-js/');
   const presets = [
     [babelPresetEnv, {
       ignoreBrowserslistConfig: false,
@@ -81,9 +82,8 @@ const getBabelSetup = (ctx, skipHQTrans) => {
       modules: false,
       shippedProposals: true,
       targets: { browsers: getBrowsersList(ua) },
-      // FIXME: proposal: true - seems like core-js has some circular dependencies
-      useBuiltIns: 'usage',
-      corejs: { version: 3, proposals: false },
+      useBuiltIns: isPoly ? false : 'usage',
+      corejs: isPoly ? undefined : { version: 3, proposals: true },
     }],
   ];
   if (isTS) {
