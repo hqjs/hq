@@ -1,7 +1,7 @@
-import posthtml from 'posthtml';
-import compileJS from './js.mjs';
-import compileCSS from './css.mjs';
 import { getScriptExtensionByAttrs, getStyleExtensionByAttrs } from './utils.mjs';
+import compileCSS from './css.mjs';
+import compileJS from './js.mjs';
+import posthtml from 'posthtml';
 
 export default async (ctx, content) => {
   const insertLR = ctx.path.includes('index.html');
@@ -40,8 +40,8 @@ export default async (ctx, content) => {
               ...ctx.stats,
               ext,
             },
-          }, nodeContent, false, true).then(({ code }) => {
-            node.content = [code];
+          }, nodeContent, false, { skipSM: true }).then(({ code }) => {
+            node.content = [ code ];
           }));
           return node;
         }
@@ -50,7 +50,7 @@ export default async (ctx, content) => {
     },
     tree => {
       if (insertLR) {
-        const [protocol, host] = ctx.store.baseURI.split(':');
+        const [ protocol, host ] = ctx.store.baseURI.split(':');
         tree.match({ tag: 'body' }, node => ({
           ...node,
           content: [
@@ -67,7 +67,7 @@ export default async (ctx, content) => {
       const promises = [];
       tree.match({ tag: 'style' }, node => {
         const ext = getStyleExtensionByAttrs(node.attrs);
-        const [nodeContent] = node.content;
+        const [ nodeContent ] = node.content;
         promises.push(compileCSS({
           ...ctx,
           path: `${ctx.path}$${styleIndex++}${ext}`,
@@ -75,8 +75,8 @@ export default async (ctx, content) => {
             ...ctx.stats,
             ext,
           },
-        }, nodeContent, false, true).then(({ code }) => {
-          node.content = [code];
+        }, nodeContent, false, { skipSM: true }).then(({ code }) => {
+          node.content = [ code ];
         }));
         return node;
       });

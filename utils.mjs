@@ -2,15 +2,17 @@ import fs from 'fs-extra';
 import http from 'http';
 import os from 'os';
 import path from 'path';
+import resolvePackage from 'resolve';
 
 const getLocalIP = () => {
   const interfaces = os.networkInterfaces();
   for (const intfs of Object.values(interfaces)) {
     for (const intf of intfs) {
-      if (intf.family == 'IPv4' && !intf.internal) return intf;
+      if (intf.family === 'IPv4' && !intf.internal) return intf;
     }
   }
-}
+  return null;
+};
 
 const { address: LOCAL_IP } = getLocalIP();
 
@@ -48,11 +50,17 @@ export const WATCH_EXTENSIONS = [
   'webp',
 ];
 
+export const isMap = filePath => path.extname(filePath).toLowerCase() === '.map';
+
 export const isTest = filePath => filePath.startsWith('/test/');
 
 export const isVendor = filePath => filePath.startsWith('/node_modules/');
 
 export const isPolyfill = filePath => filePath.startsWith('/node_modules/core-js/');
+
+export const isInternal = filePath => filePath.includes('/hq-livereload.js');
+
+export const isDefaultFavicon = filePath => filePath.endsWith('favicon.ico');
 
 export const isSource = ext => [
   '.pug',
@@ -136,6 +144,8 @@ export const findExistingExtension = async filepath => {
   else throw new Error(`File ${filepath} not found`);
 };
 
+export const getModulePath = filepath => `/node_modules/${filepath.split('/node_modules/')[1]}`;
+
 export const getPackageJSONDir = async dir => {
   let dirPath = dir;
   while (dirPath !== '/' && !await fs.pathExists(`${dirPath}/package.json`)) {
@@ -160,6 +170,21 @@ export const resolvePackageMain = async (dir, { search = false } = {}) => {
   return packageJSON.module || packageJSON.main || `index${await findExistingExtension(`${dirPath}/index`)}`;
 };
 
+export const resolvePackageFrom = (basedir, filePath) => new Promise((resolve, reject) => resolvePackage(
+  filePath.split('/node_modules/')[1],
+  {
+    basedir,
+    packageFilter(pkg) {
+      if (pkg.module) pkg.main = pkg.module;
+      return pkg;
+    },
+  },
+  (err, p) => {
+    if (err) reject(err);
+    resolve(p);
+  }
+));
+
 export const getServer = ({ app, host, port }) => new Promise((resolve, reject) => {
   const server = http.createServer(app.callback());
   server.unref();
@@ -174,7 +199,7 @@ export const getServer = ({ app, host, port }) => new Promise((resolve, reject) 
 }).catch(() => getServer({ app, host, port: port + 1 }));
 
 export const getSrc = async root => {
-  const [packageJSON, rootHTML, srcHTML, srcExists] = await Promise.all([
+  const [ packageJSON, rootHTML, srcHTML, srcExists ] = await Promise.all([
     readPackageJSON(root),
     fs.pathExists(path.join(root, './index.html')),
     fs.pathExists(path.join(root, 'src/index.html')),

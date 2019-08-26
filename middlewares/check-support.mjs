@@ -1,3 +1,4 @@
+/* eslint-disable no-magic-numbers */
 const SUPPORT = {
   desktop: {
     Chrome: [ 61, 0 ],
@@ -12,6 +13,7 @@ const SUPPORT = {
     Safari: [ 10, 3 ],
   },
 };
+/* eslint-enable no-magic-numbers */
 
 const compareVersions = (major, minor, supportMajor, supportMinor) =>
   major === 'TP' || major > supportMajor ?

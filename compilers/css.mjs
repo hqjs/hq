@@ -5,7 +5,7 @@ import postcss from 'postcss';
 import postcssPresetEnv from 'postcss-preset-env';
 import sass from 'postcss-node-sass';
 
-export default async (ctx, content, sourceMap, skipSM = false) => {
+export default async (ctx, content, sourceMap, { skipSM = false } = {}) => {
   const { ua } = ctx.store;
   // const replaced = await replaceRelativePath(ctx);
   const plugins = [

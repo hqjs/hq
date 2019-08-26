@@ -1,5 +1,5 @@
+import { HTTP_CODES, isInternal } from '../utils.mjs';
 import { getCache, getInputSourceMap, save, saveContent } from '../compilers/utils.mjs';
-import { HTTP_CODES } from '../utils.mjs';
 import fs from 'fs-extra';
 
 const buildSource = async ctx => {
@@ -16,7 +16,7 @@ const buildSource = async ctx => {
     case '.mjs':
     case '.ts': {
       const { default: compileJS } = await import('../compilers/js.mjs');
-      res = await compileJS(ctx, content, inputSourceMap, ctx.path.includes('/hq-livereload.js'));
+      res = await compileJS(ctx, content, inputSourceMap, { skipSM: isInternal(ctx.path) });
       break;
     }
     case '.css':
