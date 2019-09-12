@@ -34,10 +34,10 @@ import path from 'path';
 
 const getBabelSetup = (ctx, skipHQTrans) => {
   const { ua } = ctx.store;
-  // TODO: support .tsx
+  const isTSX = ctx.stats.ext === '.tsx';
   const isTS = ctx.stats.ext === '.ts';
-  const tsOptions = { legacy: isTS };
-  if (!isTS) tsOptions.decoratorsBeforeExport = true;
+  const tsOptions = { legacy: isTS || isTSX };
+  if (!isTS && !isTSX) tsOptions.decoratorsBeforeExport = true;
   const prePlugins = [
     babelSyntaxImportMeta,
     babelTransformExportDefault,
@@ -86,17 +86,23 @@ const getBabelSetup = (ctx, skipHQTrans) => {
       useBuiltIns: isPoly ? false : 'usage',
     }],
   ];
-  if (isTS) {
+  if (isTS || isTSX) {
     prePlugins.unshift(
       [ babelTransformTypescript, {
         allowNamespaces: true,
-        isTSX: false,
+        isTSX,
         jsxPragma: 'React',
-        removeUnusedImports: !skipHQTrans,
+        removeUnusedImports: !skipHQTrans && !isTSX,
       }],
       babelTypeMetadata,
       babelDecoratorMetadata
     );
+    if (isTSX) {
+      presets.push([
+        babelPresetReact,
+        { development: true },
+      ]);
+    }
   } else {
     presets.push([
       babelPresetReact,
@@ -136,7 +142,7 @@ const precompileSvelte = async (ctx, content) => {
     // TODO: support script preprocessors, do not transform imports
     script({ content: scriptContent, attributes }) {
       const ext = getScriptExtensionByAttrs(attributes);
-      if (![ '.ts', '.coffee', '.jsx' ].includes(ext)) return null;
+      if (![ '.ts', '.tsx', '.coffee', '.jsx' ].includes(ext)) return null;
       // TODO: check if sourcemaps can be usefull for inline scripts
       return compileJS({
         ...ctx,

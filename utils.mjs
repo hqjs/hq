@@ -41,6 +41,7 @@ export const WATCH_EXTENSIONS = [
   'svelte',
   'json',
   'ts',
+  'tsx',
   'coffee',
   'png',
   'jpg',
@@ -76,6 +77,7 @@ export const isSource = ext => [
   '.vue',
   '.svelte',
   '.ts',
+  '.tsx',
   '.coffee',
   '.map',
 ].includes(ext);
@@ -84,6 +86,7 @@ export const getResType = ext => {
   switch (ext) {
     case '.jsx':
     case '.ts':
+    case '.tsx':
     case '.es6':
     case '.vue':
     case '.svelte':
@@ -106,6 +109,7 @@ export const getLinkType = (ext, name) => {
     case '.vue':
     case '.svelte':
     case '.ts':
+    case '.tsx':
     case '.coffee':
     case '.mjs': return WORKER_REXP.test(name) ? 'worker' : 'script';
     case '.json': return 'script';
@@ -136,6 +140,7 @@ export const findExistingExtension = async filepath => {
   else if (await fs.pathExists(`${filepath}.mjs`)) return '.mjs';
   else if (await fs.pathExists(`${filepath}.json`)) return '.json';
   else if (await fs.pathExists(`${filepath}.ts`)) return '.ts';
+  else if (await fs.pathExists(`${filepath}.tsx`)) return '.tsx';
   else if (await fs.pathExists(`${filepath}.coffee`)) return '.coffee';
   else if (await fs.pathExists(`${filepath}.es6`)) return '.es6';
   else if (await fs.pathExists(`${filepath}.js`)) return '.js';

@@ -16,6 +16,10 @@
 * 🕸 Relies on the latest web standards - so you can use cutting edge features even if your browser lacks them
 * ⚡ Light and fast - ships minimum that is required with no bundlers overhead, only the files you change are delivered
 
+# VSCode extension
+
+Get [Visual Studio Code Extension](https://marketplace.visualstudio.com/items?itemName=hqjs.hq-live-server) and run hq with single `Go Live` button click.
+
 # Installation
 
 Install it once with npm
