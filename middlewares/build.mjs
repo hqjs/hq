@@ -7,6 +7,7 @@ const buildSource = async ctx => {
   const inputSourceMap = await getInputSourceMap(ctx.srcPath, content);
   let res;
   // TODO: make dynamic extension resolver
+  // TODO: move to utils
   switch (ctx.stats.ext) {
     case '.js':
     case '.jsx':
@@ -14,7 +15,8 @@ const buildSource = async ctx => {
     case '.vue':
     case '.svelte':
     case '.mjs':
-    case '.ts': {
+    case '.ts':
+    case '.tsx': {
       const { default: compileJS } = await import('../compilers/js.mjs');
       res = await compileJS(ctx, content, inputSourceMap, { skipSM: isInternal(ctx.path) });
       break;
