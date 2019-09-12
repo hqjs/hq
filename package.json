@@ -27,7 +27,7 @@
     "hq"
   ],
   "homepage": "https://hqjs.org",
-  "author": "hqjs <hqjsorg@gmail.com>",
+  "author": "hqjs <hqjs.org@gmail.com>",
   "license": "MIT",
   "engines": {
     "node": ">=8.9.0",
