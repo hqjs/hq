@@ -2,6 +2,7 @@ import {
   HTTP_CODES,
   findExistingExtension,
   getModulePath,
+  isCertificate,
   isDefaultFavicon,
   isInternal,
   isMap,
@@ -28,7 +29,7 @@ export default () => async (ctx, next) => {
       ctx.path,
       ctx.srcPath,
       ctx.dirname,
-      ctx.size
+      ctx.size,
     );
   } else {
     await resolvePath(ctx);
@@ -37,7 +38,7 @@ export default () => async (ctx, next) => {
       ctx.path,
       ctx.srcPath,
       ctx.dirname,
-      ctx.size
+      ctx.size,
     );
     pathMap.set(ctx.path, {
       dirname: ctx.dirname,
@@ -163,6 +164,7 @@ const resolveDirectory = async ctx => {
 };
 
 const resolvePath = async ctx => {
+  if (isCertificate(ctx.path, ctx.app)) return ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
   if (isInternal(ctx.path)) return resolveInternal(ctx);
   if (isPolyfill(ctx.path)) return resolvePolyfill(ctx);
   if (isVendor(ctx.path)) return resolveVendor(ctx);

@@ -3,12 +3,20 @@ import { getBrowsersList } from './utils.mjs';
 import less from 'postcss-less-engine';
 import postcss from 'postcss';
 import postcssPresetEnv from 'postcss-preset-env';
+import { readPlugins } from '../utils.mjs';
 import sass from 'postcss-node-sass';
 
-export default async (ctx, content, sourceMap, { skipSM = false } = {}) => {
+export const modulesCache = new Map;
+
+// TODO: refactor
+/* eslint-disable max-statements */
+export default async (ctx, content, sourceMap, { skipSM = false, useModules = modulesCache.has(ctx.srcPath) } = {}) => {
+  const cssPlugins = await readPlugins(ctx, '.postcssrc');
+
   const { ua } = ctx.store;
   // const replaced = await replaceRelativePath(ctx);
   const plugins = [
+    ...cssPlugins,
     postcssPresetEnv({
       browsers: getBrowsersList(ua),
       features: {
@@ -17,18 +25,17 @@ export default async (ctx, content, sourceMap, { skipSM = false } = {}) => {
         prev: sourceMap,
       },
     }),
-    cssnano({
+  ];
+  if (ctx.app.production) {
+    plugins.push(cssnano({
       preset: [
         'default', {
-          colormin: false,
-          discardComments: false,
-          normalizeWhitespace: false,
           reduceInitial: false,
           reduceTransforms: false,
         },
       ],
-    }),
-  ];
+    }));
+  }
   const options = { from: `${ctx.originalPath}.map*` };
   if (!skipSM) options.map = {
     annotation: `${ctx.path}.map`,
@@ -48,7 +55,26 @@ export default async (ctx, content, sourceMap, { skipSM = false } = {}) => {
     options.parser = less.parser;
     plugins.unshift(less());
   }
+  if (useModules) {
+    const [{ default: cssModules }, { default: crypto }] = await Promise.all([
+      import('postcss-modules'),
+      import('crypto'),
+    ]);
+    plugins.push(cssModules({
+      generateScopedName(name) {
+        const hash = crypto
+          .createHash('md5')
+          .update(ctx.srcPath)
+          .digest('hex');
+        return `${name}_${hash}`;
+      },
+      getJSON(cssFileName, json) {
+        modulesCache.set(ctx.srcPath, json);
+      },
+    }));
+  }
   const { css, map } = await postcss(plugins)
     .process(content, options);
   return { code: css, map };
 };
+/* eslint-enable max-statements */

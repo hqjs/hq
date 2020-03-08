@@ -34,7 +34,7 @@ export const save = async ctx => fs.createReadStream(ctx.srcPath).pipe(setCache(
 
 export const getBrowsersList = ua => browserslist(
   `unreleased ${ua.name} versions, ${ua.name} ${ua.ver}`,
-  { ignoreUnknownVersions: true }
+  { ignoreUnknownVersions: true },
 );
 
 export const getInputSourceMap = async (srcPath, code) => {

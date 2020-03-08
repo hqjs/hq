@@ -1,15 +1,22 @@
+import compileCSS, { modulesCache } from './css.mjs';
 import {
   getBrowsersList,
   getInputSourceMap,
   getProjectModulePath,
   getScriptExtensionByAttrs,
   getStyleExtensionByAttrs,
+  saveContent,
 } from './utils.mjs';
+import {
+  isPolyfill,
+  isWorker,
+} from '../utils.mjs';
 import babel from '@babel/core';
 import babelDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
 import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
 import babelPresetEnv from '@babel/preset-env';
 import babelPresetFlow from '@babel/preset-flow';
+import babelPresetMinify from 'babel-preset-minify';
 import babelPresetReact from '@babel/preset-react';
 import babelSyntaxImportMeta from '@babel/plugin-syntax-import-meta';
 import babelTransformClassProperties from '@babel/plugin-proposal-class-properties';
@@ -23,16 +30,20 @@ import babelTransformMixedImports from '@hqjs/babel-plugin-transform-mixed-impor
 import babelTransformModules from '@hqjs/babel-plugin-transform-modules';
 import babelTransformNameImports from '@hqjs/babel-plugin-transform-name-imports';
 import babelTransformNamedImportToDestruct from '@hqjs/babel-plugin-transform-named-import-to-destructure';
+import babelTransformNamespaceImports from '@hqjs/babel-plugin-transform-namespace-imports';
 import babelTransformParameterDecorators from '@hqjs/babel-plugin-transform-parameter-decorators';
 import babelTransformPaths from '@hqjs/babel-plugin-transform-paths';
 import babelTransformPrivateMethods from '@babel/plugin-proposal-private-methods';
 import babelTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
 import babelTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
-import compileCSS from './css.mjs';
+import fs from 'fs-extra';
 import patchAngularCompiler from '@hqjs/babel-plugin-patch-angular-fesm5-compiler';
 import path from 'path';
 
-const getBabelSetup = (ctx, skipHQTrans) => {
+const CSS_MODULES_REX = /import\s+[*a-zA-Z_,{}\s]+\s+from\s+['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
+const CSS_REQUIRE_MODULES_REX = /=\s*require\s*\(\s*['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
+
+const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
   const { ua } = ctx.store;
   const isTSX = ctx.stats.ext === '.tsx';
   const isTS = ctx.stats.ext === '.ts';
@@ -49,10 +60,10 @@ const getBabelSetup = (ctx, skipHQTrans) => {
     [ babelTransformDefine, {
       // TODO: make it conditional
       'import.meta': { url: ctx.path },
-      'process.env.NODE_ENV': 'development',
+      'process.env.NODE_ENV': ctx.app.production ? 'production' : 'development',
       'typeof window': 'object',
     }],
-    babelMinifyDeadCode,
+    [ babelMinifyDeadCode, { keepClassName: true, keepFnArgs: true, keepFnName: true }],
     babelTransformModules,
   ];
   const plugins = [
@@ -62,28 +73,29 @@ const getBabelSetup = (ctx, skipHQTrans) => {
       baseURI: ctx.store.baseURI,
       dirname: ctx.dirname,
     }],
+    babelTransformNamespaceImports,
     [ babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
     [ babelTransformNamedImportToDestruct, {
       baseURI: ctx.store.baseURI,
       map: '.map*',
     }],
-    babelTransformCssImport,
+    [ babelTransformCssImport, { styleMaps }],
     [ babelTransformJsonImport, { dirname: ctx.stats.dirname }],
   ];
 
   if (ctx.path.endsWith('compiler/fesm5/compiler.js')) {
     plugins.unshift(patchAngularCompiler);
   }
-  const isPoly = ctx.path.startsWith('/node_modules/core-js/');
+  const addPoly = isPolyfill(ctx.path) || isWorker(ctx.path);
   const presets = [
     [ babelPresetEnv, {
-      corejs: isPoly ? undefined : { proposals: true, version: 3 },
+      corejs: addPoly ? undefined : { proposals: true, version: 3 },
       ignoreBrowserslistConfig: false,
       loose: true,
       modules: false,
       shippedProposals: true,
       targets: { browsers: getBrowsersList(ua) },
-      useBuiltIns: isPoly ? false : 'usage',
+      useBuiltIns: addPoly ? false : 'usage',
     }],
   ];
   if (isTS || isTSX) {
@@ -92,25 +104,39 @@ const getBabelSetup = (ctx, skipHQTrans) => {
         allowNamespaces: true,
         isTSX,
         jsxPragma: 'React',
-        removeUnusedImports: !skipHQTrans && !isTSX,
+        removeUnusedImports: !skipHQTrans,
       }],
       babelTypeMetadata,
-      babelDecoratorMetadata
+      babelDecoratorMetadata,
     );
     if (isTSX) {
       presets.push([
         babelPresetReact,
-        { development: true },
+        { development: !ctx.app.production },
       ]);
     }
   } else {
     presets.push([
       babelPresetReact,
-      { development: true },
+      { development: !ctx.app.production },
     ], babelPresetFlow);
   }
+  const postPresets = [];
+  if (ctx.app.production) {
+    postPresets.push([ babelPresetMinify, {
+      builtIns: false,
+      deadcode: false,
+      mangle: false,
+      typeConstructors: !isPolyfill(ctx.path),
+    }]);
+  }
 
-  return { plugins: skipHQTrans ? [] : plugins, prePlugins, presets };
+  return {
+    plugins: skipHQTrans ? [] : plugins,
+    postPresets: skipHQTrans ? [] : postPresets,
+    prePlugins,
+    presets,
+  };
 };
 
 const precompileCoffee = async (ctx, content, sourceMap) => {
@@ -184,10 +210,69 @@ const precompile = async (ctx, content, sourceMap) => {
   return { inputContent: content, inputSourceMap: sourceMap };
 };
 
+const compileCSSModules = async (ctx, content) => {
+  const styleImports = [
+    ...Array.from(content.matchAll(CSS_MODULES_REX)),
+    ...Array.from(content.matchAll(CSS_REQUIRE_MODULES_REX)),
+  ];
+  const cssModules = styleImports.map(([ , filename ]) => filename);
+  const extensions = styleImports.map(([ ,, ext ]) => ext);
+  const styleBuilds = cssModules
+    .map(async (filename, index) => {
+      const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
+      const fileSrcPath = `${ctx.app.root}${filePath}`;
+      const { ua } = ctx.store;
+      if (ctx.app.table.isDirty(fileSrcPath, ua)) {
+        const styleContent = await fs.readFile(fileSrcPath, { encoding: 'utf-8' });
+        const { code, map } = await compileCSS({
+          ...ctx,
+          originalPath: filePath,
+          path: filePath,
+          srcPath: fileSrcPath,
+          stats: { ...ctx.stats, ext: `.${extensions[index]}` },
+        }, styleContent, false, { skipSM: false, useModules: true });
+        const styleModules = modulesCache.get(fileSrcPath);
+        return { code, map, styleModules };
+      } else {
+        const styleModules = modulesCache.get(fileSrcPath);
+        return { styleModules };
+      }
+    });
+  const styles = await Promise.all(styleBuilds);
+  return styles
+    .map(({ code, map, styleModules }, index) => {
+      const filename = cssModules[index];
+      const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
+      const fileSrcPath = `${ctx.app.root}${filePath}`;
+      const { ua } = ctx.store;
+      if (ctx.app.table.isDirty(fileSrcPath, ua)) {
+        const stats = ctx.app.table.touch(fileSrcPath);
+        const styleBuildPromise = saveContent(code, { path: filePath, stats, store: ctx.store });
+        stats.build.set(ua, styleBuildPromise);
+        if (map) {
+          const mapStats = ctx.app.table.touch(`${fileSrcPath}.map`);
+          // TODO: add map byte length here
+          const mapBuildPromise = saveContent(JSON.stringify(map), {
+            path: `${filePath}.map`,
+            stats: mapStats,
+            store: ctx.store,
+          });
+          mapStats.build.set(ua, mapBuildPromise);
+        }
+      }
+      return styleModules;
+    }).reduce((res, val, index) => {
+      const filename = cssModules[index];
+      res[filename] = val;
+      return res;
+    }, {});
+};
+
 const compileJS = async (ctx, content, sourceMap, { skipHQTrans = false, skipSM = false } = {}) => {
   const { inputContent, inputSourceMap } = await precompile(ctx, content, sourceMap);
+  const styleMaps = await compileCSSModules(ctx, content);
 
-  const { plugins, prePlugins, presets } = getBabelSetup(ctx, skipHQTrans);
+  const { plugins, postPresets, prePlugins, presets } = getBabelSetup(ctx, skipHQTrans, styleMaps);
 
   const { ast } = await babel.transformAsync(inputContent, {
     ast: true,
@@ -215,7 +300,7 @@ const compileJS = async (ctx, content, sourceMap, { skipHQTrans = false, skipSM 
     filename: ctx.path,
     inputSourceMap,
     plugins,
-    presets: [],
+    presets: postPresets,
     sourceFileName: `${ctx.originalPath}.map*`,
     sourceMaps: !skipSM,
   });

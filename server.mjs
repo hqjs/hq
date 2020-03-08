@@ -18,7 +18,9 @@ export default async (ROOT, PORT) => {
   const babelRCPath = path.join(ROOT, '.babelrc');
   const useBabelRC = await fs.pathExists(babelRCPath);
   const app = new Koa;
-  const server = await getServer({ app, host: '0.0.0.0', port: PORT });
+  app.hqroot = HQ_ROOT;
+  app.root = ROOT;
+  const { certs, server } = await getServer({ app, host: '0.0.0.0', port: PORT });
   const { port } = server.address();
   const wss = new WebSocket.Server({ server });
 
@@ -36,13 +38,13 @@ export default async (ROOT, PORT) => {
     }
   };
 
-  app.hqroot = HQ_ROOT;
+  app.certs = certs;
   app.port = port;
-  app.root = ROOT;
   app.src = src;
   app.babelrc = useBabelRC ? babelRCPath : undefined;
   app.debug = process.env.NODE_ENV === 'debug';
   app.table = new Table(reload).watch([src, './node_modules']);
+  app.production = process.env.NODE_ENV === 'production';
   app.startTime = Date.now();
 
   app.use(hq());

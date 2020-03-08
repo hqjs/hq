@@ -46,19 +46,19 @@ It is worth to say that `hq` requires no configuration, offering the familiar ex
 
 # How it works
 
-`hq` serves every file individually as requested, same way regular static server does. That gives you only very simple dead code elimination without proper tree shaking, but on the other hand a lot of time that was wasted for dependency analysis is being saved. All transforamtions are instant and performed on the fly. If you use modern browser and stick to the standard your code would hardly be changed at all.
+`hq` serves every file individually as requested, same way regular static server does. That gives you only very simple dead code elimination without proper tree shaking, but on the other hand a lot of time that was wasted for dependency analysis is being saved. All transforamtions are instant and performed on the fly during the first request. If you use modern browser and stick to the standard your code would hardly be changed at all.
 
 While you try to follow the standards, you can't guarantee that all that libraries that you depend on will do the same. Most of them will probably use commonjs modules format and won't work in the browser just as they are. `hq` takes care of that as well and transforms commonjs modules into ESM, handles non standard, but pretty common imports (like css or json importing) and destructure importing objects when it is required.
 
 `hq` will work tightly with the browser, using its cache system to speed up asset delivery and only delivers what has been changed. It will automatically reload the page when you modify the code so you will see the feedback immediatly.
 
-It can work with many different frameworks, but does not rely on any of that frameworks' code in particular. Instead `hq` performs ast transformations with `babel` through plugins that were designed for `hq` to help it understand all diversity of different technologies and technics used in those frameworks.
+It can work with many different frameworks, but does not rely on any of that frameworks' code in particular. Instead `hq` performs general ast transformations with `babel` through plugins that were designed for `hq` to help it understand all diversity of different technologies and technics used in those frameworks.
 
 # Example
 
 Let's say we have an existing angular project and want to improve development experience with `hq`.
 
-First of all, we need to add our global style file and script to the head and body of `index.html` correspondingly. So when `hq` serves index, it will serve styles and scripts as well
+All, we need to do is to add our global style file and script to the head and body of `index.html` correspondingly. So when `hq` serves index, it will serve styles and scripts as well
 ```html
 <!doctype html>
 <html lang="en">
@@ -73,7 +73,7 @@ First of all, we need to add our global style file and script to the head and bo
 </html>
 ```
 
-Second is a very angular specific problem - it depends on `zones` and `Reflect.metadata` APIs that are on very early stages and are not supported by `hq` out of the box. In fact angular includes them in file `polyfills.ts` and adds the file to your build. So we are going to use the file and import it on top of `main.ts`
+For most of the frameworks that is already enough, and you can skip the next step, but Angular requires a bit more attention. It depends on `zones` and `Reflect.metadata` APIs that are on very early stages and are not supported by `hq` out of the box. In fact angular includes them in file `polyfills.ts` and adds the file to your build. So we are going to import missing dependencies on top of `main.ts`
 ```js
 import 'core-js/proposals/reflect-metadata';
 import 'zone.js/dist/zone';
@@ -89,19 +89,49 @@ in the project root.
 
 # Is it good for production?
 
-It might help to serve small projects with very little dependencies. But general the answer is no, not yet. However, it is really good for development. The production solution is currently a WIP and it is going to reduce all the pain that modern web application building and deployment usually demands.
+Yes, it supports most of the projects in production mode (yet it is experimental at the moment, raise an [issue](https://github.com/hqjs/hq/issues) if you experience the problem). To activate production mode set `NODE_ENV` to production before running `hq`
+```sh
+NODE_ENV=production hq
+```
 
-# More benefits with .babelrc
+# Does it support HTTP2?
 
-With `hq` you don't need to take care of babel configuration, the **latest ecma script standard** (including **class properties** and **decorators**) will be **supported out of the box**. However if you need to support a feature that does not have a common interpretation (like svg react imports) or experimental features from an early stage (like optional chaining), just add `.babelrc` configuration to the root of your project with the list of all desired plugins
+Yes, it does. Drop your certificate and a key somewhere in the root of your project and `hq` will serve it trough HTTP2 e.g.
+```
+cert/server.pem
+cert/server-key.pem
+```
+
+# More benefits with .babelrc, .postcssrc and .posthtmlrc
+
+With `hq` you don't need to take care of babel, postcss or posthtml configuration, the **latest web standards** will be **supported out of the box**. However if you need to support a feature that does not have a common interpretation (like svg react imports) or experimental features from an early stage (like nested css), or you have your own plugins that only make sense in your project just add `.babelrc`, `.postcssrc` or `.posthtmlrc` configurations to the root of your project with the list of all desired plugins e.g
+
+`.babelrc`
 ```json
 {
   "plugins": [
-    "@babel/plugin-proposal-optional-chaining"
+    "babel-plugin-transform-remove-console"
   ]
 }
 ```
-and it will be automatically merged with `hq` configuration.
+`.postcssrc`
+```json
+{
+  "plugins": [
+    ["postcss-nested", {"preserveEmpty": true}]
+  ]
+}
+```
+`.posthtmlrc`
+```json
+{
+  "plugins": [
+    ["posthtml-doctype", { "doctype" : "HTML 5" }],
+    "posthtml-md"
+  ]
+}
+```
+and they will be automatically merged with `hq` configuration. Do not forget to install these additional plugins to your project before running `hq`.
 
 # License
 

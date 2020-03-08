@@ -13,6 +13,11 @@ export default class Table extends Map {
     this.reload = reload;
   }
 
+  isDirty(srcPath, { name, target, ver }) {
+    const record = this.get(srcPath);
+    return !record || !record.build || record.build.isDirty({ name, target, ver });
+  }
+
   touch(srcPath) {
     const current = this.get(srcPath);
     if (current !== undefined) {
