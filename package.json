@@ -1,6 +1,6 @@
 {
   "name": "@hqjs/hq",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Universal static web server for frontend development",
   "main": "server.mjs",
   "scripts": {
