@@ -104,7 +104,7 @@ cert/server-key.pem
 
 # More benefits with .babelrc, .postcssrc and .posthtmlrc
 
-With `hq` you don't need to take care of babel, postcss or posthtml configuration, the **latest web standards** will be **supported out of the box**. However if you need to support a feature that does not have a common interpretation (like svg react imports) or experimental features from an early stage (like nested css), or you have your own plugins that only make sense in your project just add `.babelrc`, `.postcssrc` or `.posthtmlrc` configurations to the root of your project with the list of all desired plugins e.g
+With `hq` you don't need to take care of babel, postcss or posthtml configuration, the **latest web standards** will be **supported out of the box**. However if you need to support a feature that does not have a common interpretation (like svg react imports) or experimental features from an early stage (like nested css), or you have your own plugins that only make sense in your project just add `.babelrc`, `.postcssrc` or `.posthtmlrc` configurations to the root of your project with the list of all desired plugins e.g.
 
 `.babelrc`
 ```json
