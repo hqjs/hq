@@ -222,6 +222,9 @@ const getFreeServer = ({ app, certs, cfg, host, net, port, retry, s, secure }) =
     net.createServer(app.callback());
   server.unref();
   server.on('error', reject);
+  // Next 2 lines required for vscode plugin
+  server.localIP = LOCAL_IP;
+  server.protocol = `http${s}`;
   server.listen(port, host, () => {
     console.log(`Start time: ${process.uptime().toFixed(1)} s`);
     console.log(`Visit http${s}://localhost:${port}\nor http${s}://${LOCAL_IP}:${port} within local network`);
