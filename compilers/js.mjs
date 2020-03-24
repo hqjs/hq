@@ -13,22 +13,26 @@ import {
 } from '../utils.mjs';
 import babel from '@babel/core';
 import babelDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
+import babelExposeGlobalToWindow from '@hqjs/babel-plugin-expose-global-to-window';
 import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
 import babelPresetEnv from '@babel/preset-env';
 import babelPresetFlow from '@babel/preset-flow';
 import babelPresetMinify from 'babel-preset-minify';
 import babelPresetReact from '@babel/preset-react';
+import babelSupportNodejsGlobals from '@hqjs/babel-plugin-support-nodejs-globals';
 import babelSyntaxImportMeta from '@babel/plugin-syntax-import-meta';
 import babelTransformClassProperties from '@babel/plugin-proposal-class-properties';
 import babelTransformCssImport from '@hqjs/babel-plugin-transform-css-imports';
 import babelTransformDecorators from '@babel/plugin-proposal-decorators';
 import babelTransformDefine from '@hqjs/babel-plugin-transform-define';
+import babelTransformExportAll from '@hqjs/babel-plugin-transform-export-all';
 import babelTransformExportDefault from '@babel/plugin-proposal-export-default-from';
 import babelTransformExportNamespace from '@babel/plugin-proposal-export-namespace-from';
 import babelTransformJsonImport from '@hqjs/babel-plugin-transform-json-imports';
 import babelTransformMixedImports from '@hqjs/babel-plugin-transform-mixed-imports';
 import babelTransformModules from '@hqjs/babel-plugin-transform-modules';
 import babelTransformNameImports from '@hqjs/babel-plugin-transform-name-imports';
+import babelTransformNamedExportToDestruct from '@hqjs/babel-plugin-transform-named-export-to-destructure';
 import babelTransformNamedImportToDestruct from '@hqjs/babel-plugin-transform-named-import-to-destructure';
 import babelTransformNamespaceImports from '@hqjs/babel-plugin-transform-namespace-imports';
 import babelTransformParameterDecorators from '@hqjs/babel-plugin-transform-parameter-decorators';
@@ -43,12 +47,13 @@ import path from 'path';
 const CSS_MODULES_REX = /import\s+[*a-zA-Z_,{}\s]+\s+from\s+['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
 const CSS_REQUIRE_MODULES_REX = /=\s*require\s*\(\s*['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
 
-const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
-  const { ua } = ctx.store;
+const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
   const isTSX = ctx.stats.ext === '.tsx';
   const isTS = ctx.stats.ext === '.ts';
   const tsOptions = { legacy: isTS || isTSX };
+
   if (!isTS && !isTSX) tsOptions.decoratorsBeforeExport = true;
+
   const prePlugins = [
     babelSyntaxImportMeta,
     babelTransformExportDefault,
@@ -64,40 +69,12 @@ const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
       'typeof window': 'object',
     }],
     [ babelMinifyDeadCode, { keepClassName: true, keepFnArgs: true, keepFnName: true }],
+    [ babelTransformNamespaceImports, { include: [ 'react', 'react-dom' ] }],
+    babelTransformNamedExportToDestruct,
+    babelTransformExportAll,
     babelTransformModules,
   ];
-  const plugins = [
-    babelSyntaxImportMeta,
-    babelTransformMixedImports,
-    [ babelTransformPaths, {
-      baseURI: ctx.store.baseURI,
-      dirname: ctx.dirname,
-    }],
-    babelTransformNamespaceImports,
-    [ babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
-    [ babelTransformNamedImportToDestruct, {
-      baseURI: ctx.store.baseURI,
-      map: '.map*',
-    }],
-    [ babelTransformCssImport, { styleMaps }],
-    [ babelTransformJsonImport, { dirname: ctx.stats.dirname }],
-  ];
 
-  if (ctx.path.endsWith('compiler/fesm5/compiler.js')) {
-    plugins.unshift(patchAngularCompiler);
-  }
-  const addPoly = isPolyfill(ctx.path) || isWorker(ctx.path);
-  const presets = [
-    [ babelPresetEnv, {
-      corejs: addPoly ? undefined : { proposals: true, version: 3 },
-      ignoreBrowserslistConfig: false,
-      loose: true,
-      modules: false,
-      shippedProposals: true,
-      targets: { browsers: getBrowsersList(ua) },
-      useBuiltIns: addPoly ? false : 'usage',
-    }],
-  ];
   if (isTS || isTSX) {
     prePlugins.unshift(
       [ babelTransformTypescript, {
@@ -109,19 +86,80 @@ const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
       babelTypeMetadata,
       babelDecoratorMetadata,
     );
-    if (isTSX) {
-      presets.push([
-        babelPresetReact,
-        { development: !ctx.app.production },
-      ]);
-    }
-  } else {
+  }
+
+  if (!skipPoly) {
+    prePlugins.unshift(babelSupportNodejsGlobals);
+  }
+
+  return prePlugins;
+};
+
+const getPlugins = (ctx, skipHQTrans, styleMaps) => {
+  if (skipHQTrans) return [];
+
+  const plugins = [
+    babelSyntaxImportMeta,
+    babelTransformMixedImports,
+    [ babelTransformPaths, {
+      baseURI: ctx.store.baseURI,
+      dirname: ctx.dirname,
+    }],
+    [ babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
+    [ babelTransformNamedImportToDestruct, {
+      baseURI: ctx.store.baseURI,
+      map: '.map*',
+    }],
+    [ babelTransformCssImport, { styleMaps }],
+    [ babelTransformJsonImport, { dirname: ctx.stats.dirname }],
+    babelExposeGlobalToWindow,
+  ];
+
+  if (ctx.path.endsWith('compiler/fesm5/compiler.js')) {
+    plugins.unshift(patchAngularCompiler);
+  }
+
+  return plugins;
+};
+
+const getPresets = (ctx, skipPoly) => {
+  const { ua } = ctx.store;
+  const isTSX = ctx.stats.ext === '.tsx';
+  const isTS = ctx.stats.ext === '.ts';
+
+  const presets = [
+    [ babelPresetEnv, {
+      bugfixes: true,
+      corejs: skipPoly ? undefined : { proposals: true, version: 3 },
+      ignoreBrowserslistConfig: false,
+      loose: true,
+      modules: false,
+      shippedProposals: true,
+      targets: { browsers: getBrowsersList(ua) },
+      useBuiltIns: skipPoly ? false : 'usage',
+    }],
+  ];
+  if (isTSX) {
     presets.push([
       babelPresetReact,
-      { development: !ctx.app.production },
+      { development: !ctx.app.production, runtime: 'classic' },
+    ]);
+  }
+  if (!isTS && !isTSX) {
+    presets.push([
+      babelPresetReact,
+      { development: !ctx.app.production, runtime: 'classic' },
     ], babelPresetFlow);
   }
+
+  return presets;
+};
+
+const getPostPresets = (ctx, skipHQTrans) => {
+  if (skipHQTrans) return [];
+
   const postPresets = [];
+
   if (ctx.app.production) {
     postPresets.push([ babelPresetMinify, {
       builtIns: false,
@@ -131,11 +169,17 @@ const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
     }]);
   }
 
+  return postPresets;
+};
+
+const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
+  const skipPoly = isPolyfill(ctx.path) || isWorker(ctx.path);
+
   return {
-    plugins: skipHQTrans ? [] : plugins,
-    postPresets: skipHQTrans ? [] : postPresets,
-    prePlugins,
-    presets,
+    plugins: getPlugins(ctx, skipHQTrans, styleMaps),
+    postPresets: getPostPresets(ctx, skipHQTrans),
+    prePlugins: getPrePlugins(ctx, skipHQTrans, skipPoly),
+    presets: getPresets(ctx, skipPoly),
   };
 };
 
@@ -220,7 +264,7 @@ const compileCSSModules = async (ctx, content) => {
   const styleBuilds = cssModules
     .map(async (filename, index) => {
       const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
-      const fileSrcPath = `${ctx.app.root}${filePath}`;
+      const fileSrcPath = path.resolve(ctx.app.root, ctx.app.src, filePath.slice(1));
       const { ua } = ctx.store;
       if (ctx.app.table.isDirty(fileSrcPath, ua)) {
         const styleContent = await fs.readFile(fileSrcPath, { encoding: 'utf-8' });
@@ -243,7 +287,7 @@ const compileCSSModules = async (ctx, content) => {
     .map(({ code, map, styleModules }, index) => {
       const filename = cssModules[index];
       const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
-      const fileSrcPath = `${ctx.app.root}${filePath}`;
+      const fileSrcPath = path.resolve(ctx.app.root, ctx.app.src, filePath.slice(1));
       const { ua } = ctx.store;
       if (ctx.app.table.isDirty(fileSrcPath, ua)) {
         const stats = ctx.app.table.touch(fileSrcPath);

@@ -1,5 +1,3 @@
-#!/usr/bin/env -S node --experimental-modules --no-warnings
-
 import path from 'path';
 import server from './server.mjs';
 

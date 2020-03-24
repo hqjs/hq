@@ -62,7 +62,9 @@ export const isTest = filePath => filePath.startsWith('/test/');
 
 export const isVendor = filePath => filePath.startsWith('/node_modules/');
 
-export const isPolyfill = filePath => filePath.startsWith('/node_modules/core-js/');
+export const isPolyfill = filePath => filePath.startsWith('/node_modules/core-js/') ||
+  filePath.startsWith('/node_modules/buffer') ||
+  filePath.startsWith('/node_modules/process');
 
 export const isInternal = filePath => filePath.includes('/hq-livereload.js');
 
@@ -179,26 +181,36 @@ export const readPackageJSON = async (dir, { search = true } = {}) => {
   }
 };
 
+// FIXME: make it work advanced package.json browser
 export const resolvePackageMain = async (dir, { search = false } = {}) => {
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
   const packageJSON = await readPackageJSON(dirPath, { search: false });
-  return packageJSON.module || packageJSON.main || `index${await findExistingExtension(`${dirPath}/index`)}`;
+  return packageJSON.module ||
+    (typeof packageJSON.browser === 'string' && packageJSON.browser) ||
+    packageJSON.main ||
+    `index${await findExistingExtension(`${dirPath}/index`)}`;
 };
 
-export const resolvePackageFrom = (basedir, filePath) => new Promise((resolve, reject) => resolvePackage(
-  filePath.split('/node_modules/')[1],
-  {
-    basedir,
-    packageFilter(pkg) {
-      if (pkg.module) pkg.main = pkg.module;
-      return pkg;
+// FIXME: make it work advanced package.json browser
+export const resolvePackageFrom = (basedir, filePath) => new Promise((resolve, reject) => {
+  const [ , modName ] = filePath.split('/node_modules/');
+  const modResolve = resolvePackage.isCore(modName) ? `${modName}/` : modName;
+  return resolvePackage(
+    modResolve,
+    {
+      basedir,
+      packageFilter(pkg) {
+        if (pkg.browser && typeof pkg.browser === 'string') pkg.main = pkg.browser;
+        if (pkg.module) pkg.main = pkg.module;
+        return pkg;
+      },
     },
-  },
-  (err, p) => {
-    if (err) reject(err);
-    resolve(p);
-  },
-));
+    (err, p) => {
+      if (err) reject(err);
+      resolve(p);
+    },
+  );
+});
 
 export const readPlugins = async (ctx, config) => {
   try {

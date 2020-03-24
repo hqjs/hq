@@ -41,7 +41,8 @@ export default async (ctx, content) => {
           (
             node.attrs.src.startsWith(ctx.origin) ||
             node.attrs.src.startsWith('/') ||
-            node.attrs.src.startsWith('.')
+            node.attrs.src.startsWith('.') ||
+            !node.attrs.src.startsWith('http')
           )
         ) {
           node.attrs = {
@@ -66,6 +67,9 @@ export default async (ctx, content) => {
             node.content = [ code ];
           }));
           return node;
+        }
+        if (node.attrs && node.attrs.src && !('defer' in node.attrs) && !('async' in node.attrs)) {
+          node.attrs.defer = '';
         }
         return node;
       });

@@ -34,6 +34,9 @@ hq
 ```
 it will find your source code and serve it.
 
+Make sure that you have `nodejs >= 8.9.0` and no unexpected `.babelrc`, `.postcssrc` or `.posthtmlrc` in a project root.
+If problem occurs - please raise an [issue](https://github.com/hqjs/hq/issues).
+
 # Why hq?
 
 There are many development tools out there, including `browserify`, `webpack`, `rollup` and `parcel`, that provide development servers. But all of them rely on bundling. While bundling might still be usefull for production, it makes the development experience quite a struggle.
