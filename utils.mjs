@@ -161,7 +161,10 @@ export const findExistingExtension = async filepath => {
   else throw new Error(`File ${filepath} not found`);
 };
 
-export const getModulePath = filepath => `/node_modules/${filepath.split('/node_modules/')[1]}`;
+export const getModulePath = filepath => {
+  const parts = filepath.split('/node_modules/');
+  return `/node_modules/${parts[parts.length - 1]}`;
+};
 
 export const getPackageJSONDir = async dir => {
   let dirPath = dir;
