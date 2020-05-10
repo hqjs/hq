@@ -34,8 +34,19 @@ hq
 ```
 it will find your source code and serve it.
 
-Make sure that you have `nodejs >= 8.9.0` and no unexpected `.babelrc`, `.postcssrc` or `.posthtmlrc` in a project root.
+Make sure that you have `nodejs >= 12.10.0` and no unexpected `.babelrc`, `.postcssrc` or `.posthtmlrc` in a project root.
 If problem occurs - please raise an [issue](https://github.com/hqjs/hq/issues).
+
+# Build
+You can use `hq` to prepare your code for regular static server. Just type
+```sh
+hq build
+```
+in a project root and build result will appear in `dist` folder. In case `hq` missed something - you can pass build target as an argument to build command. It will do proper tree shaking and consist of both `module` and `nomodule` versions.
+
+⚠️ Previous content of `dist` folder will be erased.
+
+⚠️ This feature is experimental raise an [issue](https://github.com/hqjs/hq/issues) if you experience a problem.
 
 # Why hq?
 
