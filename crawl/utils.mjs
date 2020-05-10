@@ -2,6 +2,8 @@ import fs from 'fs-extra';
 import nodeFetch from 'node-fetch';
 import path from 'path';
 
+/* eslint-disable no-magic-numbers */
+
 const packageCache = new Map;
 const scriptNameCache = new Map;
 

@@ -8,7 +8,8 @@ import path from 'path';
 
 const HQ_ROOT = path.dirname(import.meta.url.slice('file://'.length));
 
-export default async (ROOT, PORT, { build, buildArg, verbose }) => {
+/* eslint-disable max-statements */
+export default async (ROOT, PORT, { build, buildArg, verbose } = {}) => {
   const src = await getSrc(ROOT);
   const babelRCPath = path.join(ROOT, '.babelrc');
   const useBabelRC = await fs.pathExists(babelRCPath);
@@ -40,7 +41,7 @@ export default async (ROOT, PORT, { build, buildArg, verbose }) => {
   app.localIP = server.localIP;
   app.src = src;
   app.babelrc = useBabelRC ? babelRCPath : undefined;
-  app.table = new Table(reload).watch([src, './node_modules']);
+  app.table = new Table(reload).watch([ src, './node_modules' ]);
   app.production = process.env.NODE_ENV === 'production' || build;
   app.verbose = verbose;
   app.startTime = Date.now();
@@ -51,10 +52,10 @@ export default async (ROOT, PORT, { build, buildArg, verbose }) => {
     try {
       const { default: crawl } = await import('./crawl/index.mjs');
       crawl(app, buildArg);
-    } catch(e) {
+    } catch (e) {
       console.log(e);
     }
   }
 
-  return { server, app, wss, version };
+  return { app, server, wss };
 };
