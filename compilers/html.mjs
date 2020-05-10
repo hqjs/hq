@@ -1,13 +1,14 @@
 import { getScriptExtensionByAttrs, getStyleExtensionByAttrs } from './utils.mjs';
+import { readPlugins, resolvePackageFrom } from '../utils.mjs';
 import compileCSS from './css.mjs';
 import compileJS from './js.mjs';
+import fs from 'fs-extra';
 import posthtml from 'posthtml';
-import { readPlugins } from '../utils.mjs';
 
 const PUBLIC_URL = '%PUBLIC_URL%';
 
 export default async (ctx, content) => {
-  const insertLR = ctx.path.includes('index.html');
+  const insertLR = ctx.dpath.includes('index.html') && !ctx.app.production;
   const inputContent = content;
   const isPug = ctx.stats.ext === '.pug';
   const options = isPug ?
@@ -31,13 +32,50 @@ export default async (ctx, content) => {
         return node;
       });
     },
+    /* eslint-disable complexity */
     tree => {
       const promises = [];
       tree.match({ tag: 'script' }, node => {
         if (node.attrs && node.attrs.src != null) node.attrs.src = node.attrs.src.replace(PUBLIC_URL, '');
+        if (node.attrs && node.attrs.src != null && node.attrs.src.startsWith('/node_modules/')) {
+          node.attrs.src = `${node.attrs.src}?hq_type=nomodule`;
+        }
         if (
           node.attrs &&
           node.attrs.src != null &&
+          !node.attrs.src.startsWith('/') &&
+          !node.attrs.src.startsWith('.') &&
+          !node.attrs.src.startsWith('https://') &&
+          !node.attrs.src.startsWith('http://')
+        ) {
+          // FIXME: there should be module root, not app root
+          promises.push(resolvePackageFrom(ctx.app.root, `/node_modules/${node.attrs.src}`)
+            .then(modulePath => fs.pathExists(modulePath).then(exists => {
+              console.log('weeeee', node.attrs.src, modulePath, exists);
+              if (exists) {
+                node.attrs.src = `/node_modules/${node.attrs.src}`;
+                if (!('module' in node.attrs)) node.attrs.src = `${node.attrs.src}?hq_type=nomodule`;
+              } else {
+                node.attrs = {
+                  ...node.attrs,
+                  src: `./${node.attrs.src}`,
+                  type: 'module',
+                };
+              }
+            }))
+            .catch(() => {
+              node.attrs = {
+                ...node.attrs,
+                src: `./${node.attrs.src}`,
+                type: 'module',
+              };
+            }));
+          return node;
+        }
+        if (
+          node.attrs &&
+          node.attrs.src != null &&
+          !('nomodule' in node.attrs) &&
           (
             node.attrs.src.startsWith(ctx.origin) ||
             node.attrs.src.startsWith('/') ||
@@ -58,6 +96,7 @@ export default async (ctx, content) => {
           // TODO: check if sourcemaps can be usefull for inline scripts
           promises.push(compileJS({
             ...ctx,
+            dpath: `${ctx.dpath}-${worker}${scriptIndex++}${ext}`,
             path: `${ctx.path}-${worker}${scriptIndex++}${ext}`,
             stats: {
               ...ctx.stats,
@@ -77,13 +116,17 @@ export default async (ctx, content) => {
     },
     tree => {
       if (insertLR) {
-        const [ protocol, host ] = ctx.store.baseURI.split(':');
+        // const [ protocol, host ] = ctx.store.baseURI.split(':');
         tree.match({ tag: 'body' }, node => ({
           ...node,
           content: [
             ...node.content,
             {
-              attrs: { src: `${protocol}:${host}:${ctx.app.port}/hq-livereload.js` },
+              attrs: {
+                async: true,
+                src: '/hq-livereload.js', // `${protocol}:${host}:${ctx.app.port}/hq-livereload.js`,
+                type: 'module',
+              },
               tag: 'script',
             },
           ],
@@ -95,8 +138,10 @@ export default async (ctx, content) => {
       tree.match({ tag: 'style' }, node => {
         const ext = getStyleExtensionByAttrs(node.attrs);
         const [ nodeContent ] = node.content;
+        // FIXME: should it be node.content.join('');
         promises.push(compileCSS({
           ...ctx,
+          dpath: `${ctx.dpath}$${styleIndex++}${ext}`,
           path: `${ctx.path}$${styleIndex++}${ext}`,
           stats: {
             ...ctx.stats,

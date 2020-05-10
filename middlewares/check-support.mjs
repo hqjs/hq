@@ -21,11 +21,12 @@ const compareVersions = (major, minor, supportMajor, supportMinor) =>
     major === supportMajor && minor >= supportMinor;
 
 export default () => (ctx, next) => {
+  if (ctx.app.build) return next();
   if (ctx.store.support === undefined) {
     const { name, target, major, minor } = ctx.store.ua;
-    const [ supportMajor, supportMinor ] = SUPPORT[target][name];
+    const [ supportMajor, supportMinor ] = SUPPORT[target] ? SUPPORT[target][name] : [];
     ctx.store.support = compareVersions(major, minor, supportMajor, supportMinor);
-    if (ctx.app.debug) console.log('Check support', ctx.path, ctx.store.support);
+    if (ctx.app.verbose) console.log(`✔️   SUPPORT    ${ctx.store.support}`);
   }
   if (!ctx.store.support) {
     ctx.body = 'For development please use browser that supports script type="module"';

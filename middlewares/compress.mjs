@@ -21,6 +21,6 @@ export default () => async ctx => {
   ctx.set('Content-Encoding', ctx.encoding);
   const stream = ctx.body.pipe(encode[ctx.encoding]());
   ctx.body = stream;
-  if (ctx.app.debug) console.log('Compressing', ctx.path, compress);
+  if (ctx.app.verbose) console.log(`🗜️   COMPRESS   ${ctx.path}`);
   return null;
 };

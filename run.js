@@ -2,28 +2,49 @@
 const path = require('path');
 const process = require('process');
 const { spawn } = require('child_process');
+const { version } = require('./package.json');
 
 /* eslint-disable no-magic-numbers */
+
+if (process.argv.includes('-v')) {
+  console.log(version);
+  process.exit(0);
+}
 
 const [ major, minor ] = process.version
   .slice(1)
   .split('.')
   .map(x => Number(x));
 
-const jsonModules = major > 12 ||
-  (major === 12 && minor >= 13);
+const supported = major > 12 ||
+  (major === 12 && minor >= 10);
 
-const args = [
-  '--experimental-modules',
-  '--no-warnings',
-  path.resolve(__dirname, 'index.mjs'),
-];
+if (!supported) {
+  console.error('Error: Usupported node version.\nPlease use node >= 12.10.0 to run hq.');
+  process.exit(1);
+}
 
-if (jsonModules) args.splice(1, 0, '--experimental-json-modules');
+const jsModules = major < 14;
+
+const args = [ '--no-warnings' ];
+
+if (jsModules) args.push('--experimental-modules');
+
+const postArgs = [];
+const buildIndex = process.argv.indexOf('build');
+if (buildIndex !== -1) {
+  postArgs.push('build');
+  const buildArg = process.argv[buildIndex + 1];
+  if (buildArg) postArgs.push(buildArg);
+}
+const verbose = process.argv.includes('--verbose');
+if (verbose) postArgs.push('--verbose');
+
+console.log(`(c) hqjs @ ${version}`);
 
 const hq = spawn(
   process.argv0,
-  args,
+  [ ...args, path.resolve(__dirname, 'index.mjs'), ...postArgs ],
   {
     cwd: path.resolve(),
     stdio: [ 'pipe', 'pipe', 'pipe', 'ipc' ],

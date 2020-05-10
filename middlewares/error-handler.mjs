@@ -4,7 +4,8 @@ export default () => async (ctx, next) => {
   try {
     await next();
   } catch (err) {
-    console.error(err.message, err, ctx.path);
+    console.error(`❌ Error ${ctx.path}: ${err.message}`);
+    console.log(err.stack);
     ctx.status = err.status || HTTP_CODES.INTERNAL_SERVER_ERROR;
     ctx.body = `${err.message}\n${err.stack}`;
     ctx.etag = '';

@@ -12,36 +12,47 @@ import {
   isWorker,
 } from '../utils.mjs';
 import babel from '@babel/core';
-import babelDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
-import babelExposeGlobalToWindow from '@hqjs/babel-plugin-expose-global-to-window';
 import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
 import babelPresetEnv from '@babel/preset-env';
 import babelPresetFlow from '@babel/preset-flow';
 import babelPresetMinify from 'babel-preset-minify';
 import babelPresetReact from '@babel/preset-react';
-import babelSupportNodejsGlobals from '@hqjs/babel-plugin-support-nodejs-globals';
+// import babelSyntaxAsyncGenerators from '@babel/plugin-syntax-async-generators';
+// import babelSyntaxDynamicImport from '@babel/plugin-syntax-dynamic-import';
 import babelSyntaxImportMeta from '@babel/plugin-syntax-import-meta';
+// import babelSyntaxJsonString from '@babel/plugin-syntax-json-strings';
+// import babelSyntaxNullishCoalescing from '@babel/plugin-syntax-nullish-coalescing-operator';
+// import babelSyntaxNumericSeparator from '@babel/plugin-syntax-numeric-separator';
+// import babelSyntaxObjectRestSpread from '@babel/plugin-syntax-object-rest-spread';
+// import babelSyntaxOptionalCatch from '@babel/plugin-syntax-optional-catch-binding';
+// import babelSyntaxOptionalChaining from '@babel/plugin-syntax-optional-chaining';
+// import babelSyntaxTopLevelAwait from '@babel/plugin-syntax-top-level-await';
+// import babelSyntaxTypescript from '@babel/plugin-syntax-typescript';
 import babelTransformClassProperties from '@babel/plugin-proposal-class-properties';
-import babelTransformCssImport from '@hqjs/babel-plugin-transform-css-imports';
 import babelTransformDecorators from '@babel/plugin-proposal-decorators';
-import babelTransformDefine from '@hqjs/babel-plugin-transform-define';
-import babelTransformExportAll from '@hqjs/babel-plugin-transform-export-all';
 import babelTransformExportDefault from '@babel/plugin-proposal-export-default-from';
 import babelTransformExportNamespace from '@babel/plugin-proposal-export-namespace-from';
-import babelTransformJsonImport from '@hqjs/babel-plugin-transform-json-imports';
-import babelTransformMixedImports from '@hqjs/babel-plugin-transform-mixed-imports';
-import babelTransformModules from '@hqjs/babel-plugin-transform-modules';
-import babelTransformNameImports from '@hqjs/babel-plugin-transform-name-imports';
-import babelTransformNamedExportToDestruct from '@hqjs/babel-plugin-transform-named-export-to-destructure';
-import babelTransformNamedImportToDestruct from '@hqjs/babel-plugin-transform-named-import-to-destructure';
-import babelTransformNamespaceImports from '@hqjs/babel-plugin-transform-namespace-imports';
-import babelTransformParameterDecorators from '@hqjs/babel-plugin-transform-parameter-decorators';
-import babelTransformPaths from '@hqjs/babel-plugin-transform-paths';
 import babelTransformPrivateMethods from '@babel/plugin-proposal-private-methods';
-import babelTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
-import babelTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
+// import babelTransformUnicodePropertyRegex from '@babel/plugin-proposal-unicode-property-regex';
 import fs from 'fs-extra';
-import patchAngularCompiler from '@hqjs/babel-plugin-patch-angular-fesm5-compiler';
+import hqDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
+import hqExposeGlobalToWindow from '@hqjs/babel-plugin-expose-global-to-window';
+import hqPatchAngularCompiler from '@hqjs/babel-plugin-patch-angular-fesm5-compiler';
+import hqSupportNodejsGlobals from '@hqjs/babel-plugin-support-nodejs-globals';
+import hqTransformCssImport from '@hqjs/babel-plugin-transform-css-imports';
+import hqTransformDefine from '@hqjs/babel-plugin-transform-define';
+import hqTransformExportAll from '@hqjs/babel-plugin-transform-export-all';
+import hqTransformJsonImport from '@hqjs/babel-plugin-transform-json-imports';
+import hqTransformMixedImports from '@hqjs/babel-plugin-transform-mixed-imports';
+import hqTransformModules from '@hqjs/babel-plugin-transform-modules';
+import hqTransformNameImports from '@hqjs/babel-plugin-transform-name-imports';
+import hqTransformNamedExportToDestruct from '@hqjs/babel-plugin-transform-named-export-to-destructure';
+import hqTransformNamedImportToDestruct from '@hqjs/babel-plugin-transform-named-import-to-destructure';
+import hqTransformNamespaceImports from '@hqjs/babel-plugin-transform-namespace-imports';
+import hqTransformParameterDecorators from '@hqjs/babel-plugin-transform-parameter-decorators';
+import hqTransformPaths from '@hqjs/babel-plugin-transform-paths';
+import hqTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
+import hqTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
 import path from 'path';
 
 const CSS_MODULES_REX = /import\s+[*a-zA-Z_,{}\s]+\s+from\s+['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
@@ -59,37 +70,40 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
     babelTransformExportDefault,
     babelTransformExportNamespace,
     [ babelTransformDecorators, tsOptions ],
-    babelTransformParameterDecorators,
+    hqTransformParameterDecorators,
     [ babelTransformClassProperties, { loose: true }],
     [ babelTransformPrivateMethods, { loose: true }],
-    [ babelTransformDefine, {
+    [ hqTransformDefine, {
       // TODO: make it conditional
-      'import.meta': { url: ctx.path },
+      'import.meta': { url: ctx.dpath },
       'process.env.NODE_ENV': ctx.app.production ? 'production' : 'development',
       'typeof window': 'object',
     }],
     [ babelMinifyDeadCode, { keepClassName: true, keepFnArgs: true, keepFnName: true }],
-    [ babelTransformNamespaceImports, { include: [ 'react', 'react-dom' ] }],
-    babelTransformNamedExportToDestruct,
-    babelTransformExportAll,
-    babelTransformModules,
+    [ hqTransformNamespaceImports, { include: [ 'react', 'react-dom' ] }],
+    hqTransformNamedExportToDestruct,
+    hqTransformExportAll,
   ];
+
+  if (ctx.module) {
+    prePlugins.push(hqTransformModules);
+  }
 
   if (isTS || isTSX) {
     prePlugins.unshift(
-      [ babelTransformTypescript, {
+      [ hqTransformTypescript, {
         allowNamespaces: true,
         isTSX,
         jsxPragma: 'React',
         removeUnusedImports: !skipHQTrans,
       }],
-      babelTypeMetadata,
-      babelDecoratorMetadata,
+      hqTypeMetadata,
+      hqDecoratorMetadata,
     );
   }
 
   if (!skipPoly) {
-    prePlugins.unshift(babelSupportNodejsGlobals);
+    prePlugins.unshift(hqSupportNodejsGlobals);
   }
 
   return prePlugins;
@@ -100,23 +114,26 @@ const getPlugins = (ctx, skipHQTrans, styleMaps) => {
 
   const plugins = [
     babelSyntaxImportMeta,
-    babelTransformMixedImports,
-    [ babelTransformPaths, {
-      baseURI: ctx.store.baseURI,
+    [ hqTransformPaths, {
+      baseURI: '', // ctx.store.baseURI,
       dirname: ctx.dirname,
     }],
-    [ babelTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
-    [ babelTransformNamedImportToDestruct, {
-      baseURI: ctx.store.baseURI,
-      map: '.map*',
-    }],
-    [ babelTransformCssImport, { styleMaps }],
-    [ babelTransformJsonImport, { dirname: ctx.stats.dirname }],
-    babelExposeGlobalToWindow,
+    [ hqTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
+    [ hqTransformCssImport, { styleMaps }],
+    [ hqTransformJsonImport, { dirname: ctx.stats.dirname }],
+    hqExposeGlobalToWindow,
   ];
 
-  if (ctx.path.endsWith('compiler/fesm5/compiler.js')) {
-    plugins.unshift(patchAngularCompiler);
+  if (!ctx.app.build) {
+    plugins.splice(1, 0, hqTransformMixedImports);
+    plugins.splice(4, 0, [ hqTransformNamedImportToDestruct, {
+      baseURI: '', // ctx.store.baseURI,
+      map: '.map*',
+    }]);
+  }
+
+  if (ctx.dpath.endsWith('compiler/fesm5/compiler.js')) {
+    plugins.unshift(hqPatchAngularCompiler);
   }
 
   return plugins;
@@ -127,6 +144,12 @@ const getPresets = (ctx, skipPoly) => {
   const isTSX = ctx.stats.ext === '.tsx';
   const isTS = ctx.stats.ext === '.ts';
 
+  const targets = ua.target === 'module' ?
+    { esmodules: true } :
+    ua.target === 'nomodule' ?
+      { esmodules: false } :
+      { browsers: getBrowsersList(ua) };
+
   const presets = [
     [ babelPresetEnv, {
       bugfixes: true,
@@ -135,7 +158,7 @@ const getPresets = (ctx, skipPoly) => {
       loose: true,
       modules: false,
       shippedProposals: true,
-      targets: { browsers: getBrowsersList(ua) },
+      targets,
       useBuiltIns: skipPoly ? false : 'usage',
     }],
   ];
@@ -164,6 +187,7 @@ const getPostPresets = (ctx, skipHQTrans) => {
     postPresets.push([ babelPresetMinify, {
       builtIns: false,
       deadcode: false,
+      evaluate: false,
       mangle: false,
       typeConstructors: !isPolyfill(ctx.path),
     }]);
@@ -173,7 +197,7 @@ const getPostPresets = (ctx, skipHQTrans) => {
 };
 
 const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
-  const skipPoly = isPolyfill(ctx.path) || isWorker(ctx.path);
+  const skipPoly = isPolyfill(ctx.path) || isWorker(ctx.path) || !ctx.module;
 
   return {
     plugins: getPlugins(ctx, skipHQTrans, styleMaps),
@@ -216,6 +240,7 @@ const precompileSvelte = async (ctx, content) => {
       // TODO: check if sourcemaps can be usefull for inline scripts
       return compileJS({
         ...ctx,
+        dpath: `${ctx.dpath}-${scriptIndex++}${ext}`,
         path: `${ctx.path}-${scriptIndex++}${ext}`,
         stats: {
           ...ctx.stats,
@@ -228,6 +253,7 @@ const precompileSvelte = async (ctx, content) => {
       if (![ '.sass', '.scss', '.less' ].includes(ext)) return null;
       return compileCSS({
         ...ctx,
+        dpath: `${ctx.dpath}$${styleIndex++}${ext}`,
         path: `${ctx.path}$${styleIndex++}${ext}`,
         stats: {
           ...ctx.stats,
@@ -237,13 +263,13 @@ const precompileSvelte = async (ctx, content) => {
     },
   });
   const res = svelte.compile(pre.code, {
-    filename: ctx.path,
+    filename: ctx.dpath,
     format: 'esm',
-    name: path.basename(ctx.path, '.svelte'),
+    name: path.basename(ctx.dpath, '.svelte'),
   });
   const inputContent = res.js.code;
   const inputSourceMap = res.js.map;
-  inputSourceMap.sources[0] = `${ctx.originalPath}.map*`;
+  inputSourceMap.sources[0] = `${ctx.path}.map*`;
   return { inputContent, inputSourceMap };
 };
 
@@ -254,13 +280,134 @@ const precompile = async (ctx, content, sourceMap) => {
   return { inputContent: content, inputSourceMap: sourceMap };
 };
 
+// TODO: it is more accurate, but slower
+// const getStyleImports = async (ctx, content) => {
+//   const { baseURI } = ctx.store;
+//   const styleExtensions = [
+//     '.css',
+//     '.scss',
+//     '.sass',
+//     '.less',
+//     '.CSS',
+//     '.SCSS',
+//     '.SASS',
+//     '.LESS',
+//   ];
+
+//   const notRequire = (t, nodePath) => {
+//     const [ arg ] = nodePath.node.arguments;
+//     return nodePath.node.callee.name !== 'require' ||
+//       !t.isStringLiteral(arg) ||
+//       nodePath.scope.hasBinding('require');
+//   };
+
+//   // TODO: check if we need to transform dynamic css imports to modules
+//   const notImport = (t, nodePath) => {
+//     const [ arg ] = nodePath.node.arguments;
+//     return nodePath.node.callee.type !== 'Import' ||
+//       !t.isStringLiteral(arg) ||
+//       nodePath.scope.hasBinding('import');
+//   };
+
+//   const isLocalImport = modName =>
+//     modName.startsWith(baseURI) ||
+//     modName.startsWith('/') ||
+//     modName.startsWith('.') ||
+//     (
+//       !modName.startsWith('http://') &&
+//       !modName.startsWith('https://')
+//     );
+
+//   const isStyleImport = modName => styleExtensions.some(ext => modName.endsWith(ext));
+
+//   const isTSX = ctx.stats.ext === '.tsx';
+//   const isTS = ctx.stats.ext === '.ts';
+
+//   const presets = [];
+
+//   if (isTSX) {
+//     presets.push([
+//       babelPresetReact,
+//       { development: !ctx.app.production, runtime: 'classic' },
+//     ]);
+//   }
+//   if (!isTS && !isTSX) {
+//     presets.push([
+//       babelPresetReact,
+//       { development: !ctx.app.production, runtime: 'classic' },
+//     ], babelPresetFlow);
+//   }
+
+//   const styleImports = [];
+//   const plugins = [
+//     babelSyntaxAsyncGenerators,
+//     babelSyntaxDynamicImport,
+//     babelSyntaxJsonString,
+//     babelSyntaxNullishCoalescing,
+//     babelSyntaxNumericSeparator,
+//     babelSyntaxObjectRestSpread,
+//     babelSyntaxOptionalCatch,
+//     babelSyntaxOptionalChaining,
+//     babelSyntaxTopLevelAwait,
+//     babelSyntaxImportMeta,
+//     [ babelTransformClassProperties, { loose: true }],
+//     [ babelTransformPrivateMethods, { loose: true }],
+//     babelTransformUnicodePropertyRegex,
+//     ({ types: t }) => ({
+//       visitor: {
+//         CallExpression(nodePath) {
+//           if (notRequire(t, nodePath) && notImport(t, nodePath)) return;
+//           const { node } = nodePath;
+//           const [ arg ] = node.arguments;
+//           const { value: modName } = arg;
+
+//           const variableDecl = nodePath.findParent(p => p.isVariableDeclaration());
+//           if (!variableDecl) return;
+
+//           if (isLocalImport(modName) && isStyleImport(modName)) styleImports.push(modName);
+//         },
+//         ImportDeclaration(nodePath) {
+//           const { node } = nodePath;
+//           const { value: modName } = node.source;
+//           if (node.specifiers.length === 0) return;
+
+//           if (isLocalImport(modName) && isStyleImport(modName)) styleImports.push(modName);
+//         },
+//       },
+//     }),
+//   ];
+
+//   if (isTS || isTSX) {
+//     plugins.push(babelSyntaxTypescript);
+//   }
+
+//   await babel.transformAsync(content, {
+//     ast: true,
+//     babelrc: false,
+//     code: false,
+//     comments: true,
+//     compact: false,
+//     configFile: false,
+//     filename: ctx.dpath,
+//     plugins,
+//     presets,
+//     sourceMaps: false,
+//   });
+
+//   return styleImports;
+// };
+
 const compileCSSModules = async (ctx, content) => {
+  // const cssModules = await getStyleImports(ctx, content);
+  // const extensions = cssModules.map(name => path.extname(name));
+
   const styleImports = [
     ...Array.from(content.matchAll(CSS_MODULES_REX)),
     ...Array.from(content.matchAll(CSS_REQUIRE_MODULES_REX)),
   ];
   const cssModules = styleImports.map(([ , filename ]) => filename);
   const extensions = styleImports.map(([ ,, ext ]) => ext);
+
   const styleBuilds = cssModules
     .map(async (filename, index) => {
       const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
@@ -274,7 +421,7 @@ const compileCSSModules = async (ctx, content) => {
           path: filePath,
           srcPath: fileSrcPath,
           stats: { ...ctx.stats, ext: `.${extensions[index]}` },
-        }, styleContent, false, { skipSM: false, useModules: true });
+        }, styleContent, false, { skipSM: ctx.app.build, useModules: true });
         const styleModules = modulesCache.get(fileSrcPath);
         return { code, map, styleModules };
       } else {
@@ -282,21 +429,23 @@ const compileCSSModules = async (ctx, content) => {
         return { styleModules };
       }
     });
-  const styles = await Promise.all(styleBuilds);
+  const styles = await Promise.allSettled(styleBuilds);
   return styles
-    .map(({ code, map, styleModules }, index) => {
+    .filter(({ status }) => status === 'fulfilled')
+    .map(({ value: { code, map, styleModules } }, index) => {
       const filename = cssModules[index];
       const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
       const fileSrcPath = path.resolve(ctx.app.root, ctx.app.src, filePath.slice(1));
       const { ua } = ctx.store;
       if (ctx.app.table.isDirty(fileSrcPath, ua)) {
         const stats = ctx.app.table.touch(fileSrcPath);
-        const styleBuildPromise = saveContent(code, { path: filePath, stats, store: ctx.store });
+        const styleBuildPromise = saveContent(code, { dpath: filePath, path: filePath, stats, store: ctx.store });
         stats.build.set(ua, styleBuildPromise);
         if (map) {
           const mapStats = ctx.app.table.touch(`${fileSrcPath}.map`);
           // TODO: add map byte length here
           const mapBuildPromise = saveContent(JSON.stringify(map), {
+            dpath: `${filePath}.map`,
             path: `${filePath}.map`,
             stats: mapStats,
             store: ctx.store,
@@ -305,7 +454,8 @@ const compileCSSModules = async (ctx, content) => {
         }
       }
       return styleModules;
-    }).reduce((res, val, index) => {
+    })
+    .reduce((res, val, index) => {
       const filename = cssModules[index];
       res[filename] = val;
       return res;
@@ -326,11 +476,11 @@ const compileJS = async (ctx, content, sourceMap, { skipHQTrans = false, skipSM 
     compact: false,
     configFile: false,
     extends: ctx.app.babelrc,
-    filename: ctx.path,
+    filename: ctx.dpath,
     inputSourceMap,
     plugins: prePlugins,
     presets,
-    sourceFileName: `${ctx.originalPath}.map*`,
+    sourceFileName: `${ctx.path}.map*`,
     sourceMaps: !skipSM,
   });
 
@@ -341,11 +491,11 @@ const compileJS = async (ctx, content, sourceMap, { skipHQTrans = false, skipSM 
     comments: true,
     compact: false,
     configFile: false,
-    filename: ctx.path,
+    filename: ctx.dpath,
     inputSourceMap,
     plugins,
     presets: postPresets,
-    sourceFileName: `${ctx.originalPath}.map*`,
+    sourceFileName: `${ctx.path}.map*`,
     sourceMaps: !skipSM,
   });
 

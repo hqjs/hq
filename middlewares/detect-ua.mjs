@@ -10,8 +10,20 @@ export default () => (ctx, next) => {
     if (store) {
       ctx.store = store;
     } else {
-      const { category, name, version } = woothee.parse(uaString);
-      const target = category === 'pc' ? 'desktop' : 'mobile';
+      const { category, name, version } = ctx.app.build ?
+        {
+          category: uaString.split('/')[0],
+          name: 'hq',
+          version: uaString.split('/')[1],
+        } :
+        woothee.parse(uaString);
+      const target = category === 'module' ?
+        'module' :
+        category === 'nomodule' ?
+          'nomodule' :
+          category === 'pc' ?
+            'desktop' :
+            'mobile';
       const [ major, minor ] = version.split('.').map(x => {
         const num = Number(x);
         return Number.isNaN(num) ? x : num;
@@ -28,13 +40,7 @@ export default () => (ctx, next) => {
       ctx.store.root = `./.dist/${target}/${name}/${ver}`;
       ctx.store.baseURI = ctx.request.origin;
       uaMap.set(uaString, ctx.store);
-      if (ctx.app.debug) console.log(
-        'Detect user agent',
-        ctx.path,
-        ctx.store.ua,
-        ctx.store.root,
-        ctx.store.baseURI
-      );
+      if (ctx.app.verbose) console.log(`🌐  USER AGENT ${name} ${ver} for ${target}`);
     }
   }
   return next();

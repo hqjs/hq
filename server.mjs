@@ -4,22 +4,18 @@ import Table from './res/table.mjs';
 import WebSocket from 'ws';
 import fs from 'fs-extra';
 import hq from './hq.mjs';
-import info from './package.json';
 import path from 'path';
 
 const HQ_ROOT = path.dirname(import.meta.url.slice('file://'.length));
 
-const { version } = info;
-
-console.log(`(c) hqjs @ ${version}`);
-
-export default async (ROOT, PORT) => {
+export default async (ROOT, PORT, { build, buildArg, verbose }) => {
   const src = await getSrc(ROOT);
   const babelRCPath = path.join(ROOT, '.babelrc');
   const useBabelRC = await fs.pathExists(babelRCPath);
   const app = new Koa;
   app.hqroot = HQ_ROOT;
   app.root = ROOT;
+  app.build = build;
   const { certs, server } = await getServer({ app, host: '0.0.0.0', port: PORT });
   const { port } = server.address();
   const wss = new WebSocket.Server({ server });
@@ -40,14 +36,25 @@ export default async (ROOT, PORT) => {
 
   app.certs = certs;
   app.port = port;
+  app.protocol = server.protocol;
+  app.localIP = server.localIP;
   app.src = src;
   app.babelrc = useBabelRC ? babelRCPath : undefined;
-  app.debug = process.env.NODE_ENV === 'debug';
   app.table = new Table(reload).watch([src, './node_modules']);
-  app.production = process.env.NODE_ENV === 'production';
+  app.production = process.env.NODE_ENV === 'production' || build;
+  app.verbose = verbose;
   app.startTime = Date.now();
 
   app.use(hq());
+
+  if (build) {
+    try {
+      const { default: crawl } = await import('./crawl/index.mjs');
+      crawl(app, buildArg);
+    } catch(e) {
+      console.log(e);
+    }
+  }
 
   return { server, app, wss, version };
 };

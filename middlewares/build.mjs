@@ -18,7 +18,7 @@ const buildSource = async ctx => {
     case '.ts':
     case '.tsx': {
       const { default: compileJS } = await import('../compilers/js.mjs');
-      res = await compileJS(ctx, content, inputSourceMap, { skipSM: isInternal(ctx.path) });
+      res = await compileJS(ctx, content, inputSourceMap, { skipSM: isInternal(ctx.dpath) || ctx.app.build });
       break;
     }
     case '.css':
@@ -26,7 +26,7 @@ const buildSource = async ctx => {
     case '.sass':
     case '.less': {
       const { default: compileCSS } = await import('../compilers/css.mjs');
-      res = await compileCSS(ctx, content, inputSourceMap);
+      res = await compileCSS(ctx, content, inputSourceMap, { skipSM: ctx.app.build });
       break;
     }
     case '.pug':
@@ -47,7 +47,12 @@ const buildSource = async ctx => {
     const { ua } = ctx.store;
     const stats = ctx.app.table.touch(`${ctx.srcPath}.map`);
     // TODO: add map byte length here
-    const mapBuildPromise = saveContent(JSON.stringify(map), { path: `${ctx.path}.map`, stats, store: ctx.store });
+    const mapBuildPromise = saveContent(JSON.stringify(map), {
+      dpath: `${ctx.dpath}.map`,
+      path: `${ctx.path}.map`,
+      stats,
+      store: ctx.store,
+    });
     stats.build.set(ua, mapBuildPromise);
   }
   return saveContent(code, ctx);
@@ -67,13 +72,13 @@ const getBuild = async ctx => {
   const { build } = ctx.stats;
   const isDirty = build.isDirty(ua);
   if (isDirty) {
-    if (ext === '.map') ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
-    if (ctx.app.debug) console.log('Building', ctx.path, ua);
+    if (ext === '.map') ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
+    if (ctx.app.verbose) console.log(`🛠️   BUILD      ${ctx.path}: ${ua.name} ${ua.ver} for ${ua.target}`);
     const buildPromise = makeBuild(ctx);
     build.set(ua, buildPromise);
     return buildPromise;
   } else {
-    if (ctx.app.debug) console.log('Skip building', ctx.path);
+    if (ctx.app.verbose) console.log(`⚙️   CACHE      ${ctx.path}: ${ua.name} ${ua.ver} for ${ua.target}`);
     return build.get(ua);
   }
 };
@@ -83,7 +88,7 @@ export default () => async (ctx, next) => {
   const { ua } = ctx.store;
   try {
     await getBuild(ctx);
-    if (ctx.app.debug) console.log('Sending', ctx.path);
+    if (ctx.app.verbose) console.log(`🚀  SEND       ${ctx.path}`);
     ctx.type = ctx.stats.type;
     ctx.body = getCache(ctx);
   } catch (err) {

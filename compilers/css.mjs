@@ -1,5 +1,6 @@
 import cssnano from 'cssnano';
 import { getBrowsersList } from './utils.mjs';
+import path from 'path';
 import postcss from 'postcss';
 import postcssPresetEnv from 'postcss-preset-env';
 import { readPlugins } from '../utils.mjs';
@@ -7,12 +8,23 @@ import { readPlugins } from '../utils.mjs';
 export const modulesCache = new Map;
 
 const preprocess = async (ctx, content, sourceMap, { skipSM }) => {
-  const preOptions = { from: `${ctx.originalPath}.map*` };
+  const preOptions = { from: `${ctx.path}.map*` };
   const prePlugins = [ root => {
+    const replacePath3 = (math, p1, styleImport, p2) =>
+      styleImport.startsWith('/') ?
+        `${p1}${path.resolve(ctx.app.src, styleImport.slice(1))}${p2}` :
+        `${p1}.${path.resolve(ctx.dirname, styleImport)}${p2}`;
+    const replacePath1 = (match, styleImport) =>
+      styleImport.startsWith('/') ?
+        `${path.resolve(ctx.app.src, styleImport.slice(1))}` :
+        `.${path.resolve(ctx.dirname, styleImport)}`;
     root.walkAtRules('import', rule => {
-      if (!rule.params.startsWith('"/')) rule.params = `".${ctx.dirname}/${rule.params.slice(1)}`;
-      else rule.params = `"${ctx.app.src}${rule.params.slice(1)}`;
+      rule.params = rule.params
+        .replace(/(url\(['"]*)([^'")]+)(['"]*\))/g, replacePath3)
+        .replace(/(['"])([^'"]+)(['"])/g, replacePath3)
+        .replace(/\s+([^\s'"]+\.(css|scss|sass|less))/g, replacePath1);
     });
+    // TODO: add url and font-face
   } ];
   if (ctx.stats.ext === '.scss') {
     const { default: scssSyntax } = await import('postcss-scss');
@@ -67,16 +79,21 @@ const compile = async (ctx, content, sourceMap, { skipSM, useModules }) => {
   const cssPlugins = await readPlugins(ctx, '.postcssrc');
 
   const { ua } = ctx.store;
+  const presetOptions = {
+    features: {
+      calc: false,
+      customProperties: false,
+      prev: sourceMap,
+    },
+  };
+  if (ctx.app.build) {
+    presetOptions.stage = 4;
+  } else {
+    presetOptions.browsers = getBrowsersList(ua);
+  }
   const plugins = [
     ...cssPlugins,
-    postcssPresetEnv({
-      browsers: getBrowsersList(ua),
-      features: {
-        calc: false,
-        customProperties: false,
-        prev: sourceMap,
-      },
-    }),
+    postcssPresetEnv(presetOptions),
   ];
 
   if (ctx.app.production) {
@@ -90,7 +107,7 @@ const compile = async (ctx, content, sourceMap, { skipSM, useModules }) => {
     }));
   }
 
-  const options = { from: `${ctx.originalPath}.map*` };
+  const options = { from: `${ctx.path}.map*` };
   if (!skipSM) options.map = {
     annotation: `${ctx.path}.map`,
     inline: false,

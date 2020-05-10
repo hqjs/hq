@@ -14,143 +14,145 @@ import {
 } from '../utils.mjs';
 import fs from 'fs-extra';
 import path from 'path';
+import querystring from 'querystring';
 
 const pathMap = new Map;
 
+const humanReadableSize = size => size < 1024 ?
+  `${size}b` :
+  size < 1024 * 1024 ?
+    `${(size / 1024).toFixed(1)}Kb` :
+    `${(size / 1024 / 1024).toFixed(2)}Mb`;
+
 export default () => async (ctx, next) => {
-  ctx.originalPath = ctx.path;
-  const current = pathMap.get(ctx.path);
+  ctx.dpath = querystring.unescape(ctx.path);
+  ctx.module = ctx.query['hq_type'] !== 'nomodule';
+  const current = pathMap.get(ctx.dpath);
   if (current !== undefined) {
     ctx.dirname = current.dirname;
     ctx.srcPath = current.srcPath;
     ctx.size = current.size;
-    if (ctx.app.debug) console.log(
-      'Resolve path',
-      ctx.path,
-      ctx.srcPath,
-      ctx.dirname,
-      ctx.size,
-    );
   } else {
     await resolvePath(ctx);
-    if (ctx.app.debug) console.log(
-      'Resolving path',
-      ctx.path,
-      ctx.srcPath,
-      ctx.dirname,
-      ctx.size,
-    );
-    pathMap.set(ctx.path, {
+    pathMap.set(ctx.dpath, {
       dirname: ctx.dirname,
       size: ctx.size,
       srcPath: ctx.srcPath,
     });
   }
+  if (ctx.app.verbose) {
+    const resolvedPath = isMap(ctx.dpath) ? 'virtual' : `${ctx.srcPath} ${humanReadableSize(ctx.size)}`;
+    console.log(`🔎  RESOLVE    ${ctx.dpath}: ${resolvedPath}`);
+  }
   return next();
 };
 
 const resolveInternal = async ctx => {
-  ctx.srcPath = `${ctx.app.hqroot}${ctx.path}`;
-  ctx.dirname = path.dirname(ctx.path);
-  const stats = ctx.path.endsWith('.map') ? { size: 0 } : await fs.lstat(ctx.srcPath);
+  ctx.srcPath = `${ctx.app.hqroot}${ctx.dpath}`;
+  ctx.dirname = path.dirname(ctx.dpath);
+  const stats = ctx.dpath.endsWith('.map') ? { size: 0 } : await fs.lstat(ctx.srcPath);
   ctx.size = stats.size;
 };
 
 const resolvePolyfill = async ctx => {
   try {
-    const srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.path);
+    const srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.dpath);
     ctx.srcPath = await fs.realpath(srcPath);
     const stats = await fs.lstat(ctx.srcPath);
     ctx.size = stats.size;
-    ctx.path = getModulePath(ctx.srcPath);
-    ctx.dirname = path.dirname(ctx.path);
+    ctx.dpath = getModulePath(ctx.srcPath);
+    ctx.dirname = path.dirname(ctx.dpath);
   } catch {
-    if (isMap(ctx.path)) {
+    if (isMap(ctx.dpath)) {
       try {
-        ctx.srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.path.slice(0, -4));
+        ctx.srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.dpath.slice(0, -4));
+        ctx.dpath = getModulePath(ctx.srcPath);
         await resolveMap(ctx);
       } catch {
-        ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
+        ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
       }
-    } else ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
+    } else ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
   }
 };
 
 const resolveVendor = async ctx => {
   try {
-    const srcPath = await resolvePackageFrom(ctx.app.root, ctx.path);
+    const srcPath = await resolvePackageFrom(ctx.app.root, ctx.dpath);
     ctx.srcPath = await fs.realpath(srcPath);
     const stats = await fs.lstat(ctx.srcPath);
     ctx.size = stats.size;
-    ctx.path = getModulePath(ctx.srcPath);
-    ctx.dirname = path.dirname(ctx.path);
+    ctx.dpath = getModulePath(ctx.srcPath);
+    ctx.dirname = path.dirname(ctx.dpath);
   } catch {
-    if (isMap(ctx.path)) {
+    if (isMap(ctx.dpath)) {
       try {
-        ctx.srcPath = await resolvePackageFrom(ctx.app.root, ctx.path.slice(0, -4));
+        ctx.srcPath = await resolvePackageFrom(ctx.app.root, ctx.dpath.slice(0, -4));
+        ctx.dpath = getModulePath(ctx.srcPath);
         await resolveMap(ctx);
       } catch {
-        ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
+        ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
       }
-    } else ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
+    } else ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
   }
 };
 
 const resolveSrc = async ctx => {
+  let isDirectory = false;
   try {
-    const relPath = isTest(ctx.path) ?
-      `.${ctx.path}` :
-      `${ctx.app.src}${ctx.path}`;
+    const relPath = isTest(ctx.dpath) ?
+      `.${ctx.dpath}` :
+      `${ctx.app.src}${ctx.dpath}`;
     ctx.srcPath = path.resolve(ctx.app.root, relPath);
     ctx.srcPath = await fs.realpath(ctx.srcPath);
     const stats = await fs.lstat(ctx.srcPath);
     ctx.size = stats.size;
-    if (stats.isDirectory()) {
-      try {
-        await resolveDirectory(ctx);
-      } catch {
-        ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
-      }
+    isDirectory = stats.isDirectory();
+    if (isDirectory) {
+      await resolveDirectory(ctx);
     } else {
-      ctx.dirname = path.dirname(ctx.path);
+      ctx.dirname = path.dirname(ctx.dpath);
     }
   } catch {
+    if (isDirectory) ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
     try {
       await resolveFile(ctx);
     } catch {
-      if (isMap(ctx.path)) {
-        ctx.srcPath = ctx.srcPath.slice(0, -4);
+      if (isMap(ctx.dpath)) {
+        const srcPath = ctx.srcPath.slice(0, -4);
+        const ext = await findExistingExtension(srcPath);
+        ctx.srcPath = `${srcPath}${ext}`;
+        ctx.dpath = `${ctx.dpath.slice(0, -4)}${ext}`;
         await resolveMap(ctx);
-      } else if (isDefaultFavicon(ctx.path)) await resolveFavicon(ctx);
-      else ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
+      } else if (isDefaultFavicon(ctx.dpath)) await resolveFavicon(ctx);
+      else ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
     }
   }
 };
 
 const resolveFavicon = async ctx => {
   ctx.srcPath = `${ctx.app.hqroot}/hqjs.png`;
-  ctx.dirname = path.dirname(ctx.path);
+  ctx.dirname = path.dirname(ctx.dpath);
   const stats = await fs.lstat(ctx.srcPath);
   ctx.size = stats.size;
 };
 
 const resolveMap = async ctx => {
   try {
-    const srcPath = await fs.realpath(ctx.srcPath);
-    ctx.srcPath = `${srcPath}.map`;
-    ctx.dirname = path.dirname(ctx.path);
+    ctx.srcPath = `${ctx.srcPath}.map`;
+    ctx.dpath = `${ctx.dpath}.map`;
+    ctx.dirname = path.dirname(ctx.dpath);
     // TODO: resolve size from build here
     ctx.size = 0;
   } catch {
-    ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
+    ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
   }
 };
 
 const resolveFile = async ctx => {
   const ext = await findExistingExtension(ctx.srcPath);
-  ctx.path += ext;
+  ctx.dpath += ext;
   ctx.srcPath += ext;
-  ctx.dirname = path.dirname(ctx.path);
+  ctx.dirname = path.dirname(ctx.dpath);
 };
 
 const resolveDirectory = async ctx => {
@@ -159,14 +161,14 @@ const resolveDirectory = async ctx => {
   const ext = await findExistingExtension(srcPath);
   const fileName = `${main}${ext}`;
   ctx.srcPath = path.join(ctx.srcPath, fileName);
-  ctx.path = path.join(ctx.path, fileName);
-  ctx.dirname = path.dirname(ctx.path);
+  ctx.dpath = path.join(ctx.dpath, fileName);
+  ctx.dirname = path.dirname(ctx.dpath);
 };
 
 const resolvePath = async ctx => {
-  if (isCertificate(ctx.path, ctx.app)) return ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.path} not found`);
-  if (isInternal(ctx.path)) return resolveInternal(ctx);
-  if (isPolyfill(ctx.path)) return resolvePolyfill(ctx);
-  if (isVendor(ctx.path)) return resolveVendor(ctx);
+  if (isCertificate(ctx.dpath, ctx.app)) return ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
+  if (isInternal(ctx.dpath)) return resolveInternal(ctx);
+  if (isPolyfill(ctx.dpath)) return resolvePolyfill(ctx);
+  if (isVendor(ctx.dpath)) return resolveVendor(ctx);
   return resolveSrc(ctx);
 };

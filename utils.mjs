@@ -64,7 +64,10 @@ export const isVendor = filePath => filePath.startsWith('/node_modules/');
 
 export const isPolyfill = filePath => filePath.startsWith('/node_modules/core-js/') ||
   filePath.startsWith('/node_modules/buffer') ||
-  filePath.startsWith('/node_modules/process');
+  filePath.startsWith('/node_modules/base64-js') ||
+  filePath.startsWith('/node_modules/ieee754') ||
+  filePath.startsWith('/node_modules/process') ||
+  filePath.startsWith('/node_modules/regenerator-runtime');
 
 export const isInternal = filePath => filePath.includes('/hq-livereload.js');
 
@@ -241,8 +244,12 @@ const getFreeServer = ({ app, certs, cfg, host, net, port, retry, s, secure }) =
   server.localIP = LOCAL_IP;
   server.protocol = `http${s}`;
   server.listen(port, host, () => {
-    console.log(`Start time: ${process.uptime().toFixed(1)} s`);
-    console.log(`Visit http${s}://localhost:${port}\nor http${s}://${LOCAL_IP}:${port} within local network`);
+    if (!app.build) {
+      console.log(`Start time: ${process.uptime().toFixed(1)} s`);
+      console.log(`Visit http${s}://localhost:${port}\nor http${s}://${LOCAL_IP}:${port} within local network`);
+    } else {
+      console.log('Building...');
+    }
     import('./compilers/html.mjs');
     resolve({
       certs: certs.map(crt => crt.slice(app.root.length)),

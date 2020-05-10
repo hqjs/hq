@@ -10,8 +10,8 @@ const { Readable } = stream;
 const cache = new Cache();
 
 const getKey = ctx => ctx.stats.isSrc ?
-  path.join(ctx.store.root, ctx.path) :
-  path.join('./.dist/assets/', ctx.path);
+  path.join(ctx.store.root, ctx.dpath) :
+  path.join('./.dist/assets/', ctx.dpath);
 
 export const getCache = ctx => {
   const key = getKey(ctx);

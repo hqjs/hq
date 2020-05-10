@@ -8,7 +8,10 @@ export default () => (ctx, next) => {
   ctx.status = HTTP_CODES.OK;
   ctx.etag = `${ctx.app.startTime}:${ctx.stats.version}`;
   ctx.set('Cache-Control', `private, max-age=${maxAge}`);
-  if (ctx.app.debug) console.log('Checking etag', ctx.fresh, ctx.etag);
+  if (ctx.app.verbose) {
+    const resolvedStatus = ctx.fresh ? '304 Not Modified' : '200 OK';
+    console.log(`🏷   ETAG       ${ctx.path}: version ${ctx.stats.version} - ${resolvedStatus}`);
+  }
   if (ctx.fresh) {
     ctx.status = HTTP_CODES.NOT_MODIFIED;
     ctx.body = null;
