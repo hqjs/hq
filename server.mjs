@@ -5,8 +5,9 @@ import WebSocket from 'ws';
 import fs from 'fs-extra';
 import hq from './hq.mjs';
 import path from 'path';
+import url from 'url';
 
-const HQ_ROOT = path.dirname(import.meta.url.slice('file://'.length));
+const HQ_ROOT = path.dirname(url.fileURLToPath(import.meta.url));
 
 /* eslint-disable max-statements */
 export default async (ROOT, PORT, { build, buildArg, verbose } = {}) => {
