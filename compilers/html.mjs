@@ -51,7 +51,6 @@ export default async (ctx, content) => {
           // FIXME: there should be module root, not app root
           promises.push(resolvePackageFrom(ctx.app.root, `/node_modules/${node.attrs.src}`)
             .then(modulePath => fs.pathExists(modulePath).then(exists => {
-              console.log('weeeee', node.attrs.src, modulePath, exists);
               if (exists) {
                 node.attrs.src = `/node_modules/${node.attrs.src}`;
                 if (!('module' in node.attrs)) node.attrs.src = `${node.attrs.src}?hq_type=nomodule`;
@@ -116,7 +115,6 @@ export default async (ctx, content) => {
     },
     tree => {
       if (insertLR) {
-        // const [ protocol, host ] = ctx.store.baseURI.split(':');
         tree.match({ tag: 'body' }, node => ({
           ...node,
           content: [
@@ -124,7 +122,7 @@ export default async (ctx, content) => {
             {
               attrs: {
                 async: true,
-                src: '/hq-livereload.js', // `${protocol}:${host}:${ctx.app.port}/hq-livereload.js`,
+                src: '/hq-livereload.js',
                 type: 'module',
               },
               tag: 'script',
@@ -137,8 +135,7 @@ export default async (ctx, content) => {
       const promises = [];
       tree.match({ tag: 'style' }, node => {
         const ext = getStyleExtensionByAttrs(node.attrs);
-        const [ nodeContent ] = node.content;
-        // FIXME: should it be node.content.join('');
+        const nodeContent = node.content.join('');
         promises.push(compileCSS({
           ...ctx,
           dpath: `${ctx.dpath}$${styleIndex++}${ext}`,

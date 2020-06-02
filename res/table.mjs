@@ -8,9 +8,14 @@ import path from 'path';
 const DOT_FILES = /(^|[/\\])\../;
 
 export default class Table extends Map {
-  constructor(reload) {
+  constructor(reload = () => undefined) {
     super();
     this.reload = reload;
+  }
+
+  setReload(reload) {
+    this.reload = reload || (() => undefined);
+    return this;
   }
 
   isDirty(srcPath, { name, target, ver }) {

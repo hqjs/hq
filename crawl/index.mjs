@@ -22,7 +22,6 @@ const scriptExtensions = [
   '.svelte',
 ];
 
-/* eslint-disable max-statements */
 export default async (app, buildArg) => {
   let buildPath;
   let override = false;
@@ -36,7 +35,7 @@ export default async (app, buildArg) => {
   const main = buildPath || await resolvePackageMain(path.resolve(app.root, app.src), { search: false });
   const mainUrl = `/${main}`;
   const errors = new Set;
-  await makeBuild(app, mainUrl, true, errors, override);
+  await makeBuild(app, mainUrl, true, { errors, override });
   if ([
     '',
     '.js',
@@ -48,13 +47,13 @@ export default async (app, buildArg) => {
     '.coffee',
     '.svelte',
     '.html',
-  ].includes(path.extname(mainUrl))) await makeBuild(app, mainUrl, false, errors);
+  ].includes(path.extname(mainUrl))) await makeBuild(app, mainUrl, false, { errors });
   if (errors.size === 0) console.log('\n\n\n✅ Build successfully completed!');
   else console.log(`\n\n⚠️  Build completed with errors:\n${[ ...errors ].map(err => `    🚫 ${err}`).join('\n')}`);
   process.exit(0);
 };
 
-const makeBuild = async (app, main, module, errors, override) => {
+const makeBuild = async (app, main, module, { errors, override }) => {
   const entries = scriptExtensions.some(ext => main.endsWith(ext)) ?
     new Set([ main ]) :
     new Set;
@@ -149,6 +148,7 @@ const request = async (app, req, module, {
   }
 };
 
+/* eslint-disable max-statements */
 const build = async (url, reqPath, module, { app, entries, queue, resources, visited }) => {
   visited.add(reqPath);
   const ua = module ?
@@ -160,53 +160,49 @@ const build = async (url, reqPath, module, { app, entries, queue, resources, vis
   let trReqPath;
   const res = await fetch(url, { headers: { 'user-agent': ua } });
   if (!res.ok) throw new Error(`Unable to build ${reqPath}: ${res.statusText}`);
-  switch (res.headers.get('content-type')) {
-    case 'text/html; charset=utf-8': {
-      const content = await res.text();
-      transformed = await buildHtml(content, url, { app, entries, queue });
-      trReqPath = reqPath;
-      outputPath = path.resolve(distPath, trReqPath.slice(1));
-      break;
-    }
-    case 'application/javascript; charset=utf-8': {
-      const content = await res.text();
-      transformed = await buildJs(content, url, { app, queue });
-      trReqPath = getScriptName(app.root, reqPath);
-      outputPath = path.resolve(distPath, trReqPath.slice(1));
-      break;
-    }
-    case 'text/css; charset=utf-8': {
-      const content = await res.text();
-      transformed = await buildCss(content, url, { app, queue });
-      trReqPath = changeStyleExt(reqPath);
-      outputPath = path.resolve(distPath, trReqPath.slice(1));
-      break;
-    }
-    case 'application/manifest+json; charset=utf-8': {
-      const content = await res.text();
-      transformed = await buildManifest(content, { queue });
-      trReqPath = reqPath;
-      outputPath = path.resolve(distPath, trReqPath.slice(1));
-      break;
-    }
-    case 'image/png': {
-      const content = await res.buffer();
-      transformed = content;
-      trReqPath = reqPath;
-      outputPath = path.resolve(distPath, trReqPath.slice(1));
-      break;
-    }
-    default: {
-      const content = await res.text();
-      transformed = content;
-      trReqPath = reqPath;
-      outputPath = path.resolve(distPath, trReqPath.slice(1));
-      break;
-    }
+  const ctype = res.headers.get('content-type');
+  if (ctype === 'text/html; charset=utf-8') {
+    const content = await res.text();
+    transformed = await buildHtml(content, url, { app, entries, queue });
+    trReqPath = reqPath;
+    outputPath = path.resolve(distPath, trReqPath.slice(1));
+  } else if (ctype === 'application/javascript; charset=utf-8') {
+    const content = await res.text();
+    transformed = await buildJs(content, url, { app, queue });
+    trReqPath = getScriptName(app.root, reqPath);
+    outputPath = path.resolve(distPath, trReqPath.slice(1));
+  } else if (ctype === 'text/css; charset=utf-8') {
+    const content = await res.text();
+    transformed = await buildCss(content, url, { app, queue });
+    trReqPath = changeStyleExt(reqPath);
+    outputPath = path.resolve(distPath, trReqPath.slice(1));
+  } else if (ctype === 'application/manifest+json; charset=utf-8') {
+    const content = await res.text();
+    transformed = await buildManifest(content, { queue });
+    trReqPath = reqPath;
+    outputPath = path.resolve(distPath, trReqPath.slice(1));
+  } else if (
+    !ctype.startsWith('image/svg+xml') &&
+    (
+      ctype.startsWith('image/') ||
+      ctype.startsWith('audio/') ||
+      ctype.startsWith('video/')
+    )
+  ) {
+    const content = await res.buffer();
+    transformed = content;
+    trReqPath = reqPath;
+    outputPath = path.resolve(distPath, trReqPath.slice(1));
+  } else {
+    const content = await res.text();
+    transformed = content;
+    trReqPath = reqPath;
+    outputPath = path.resolve(distPath, trReqPath.slice(1));
   }
   resources.add(trReqPath);
   return fs.outputFile(outputPath, transformed);
 };
+/* eslint-enable max-statements */
 
 const makeBundle = async (app, module, entry) => {
   const inputOptions = module ?

@@ -58,9 +58,26 @@ const buildSource = async ctx => {
   return saveContent(code, ctx);
 };
 
+const buildAsset = async ctx => {
+  // return save(ctx);
+  switch (ctx.stats.ext) {
+    // case '.webp':
+    case '.gif':
+    case '.png':
+    case '.jpg':
+    case '.jpeg':
+    case '.svg': {
+      const content = await fs.readFile(ctx.srcPath);
+      const { default: minifyImage } = await import('../compilers/image.mjs');
+      return minifyImage(ctx, content);
+    }
+    default: return save(ctx);
+  }
+};
+
 const makeBuild = ctx => ctx.stats.isSrc ?
   buildSource(ctx) :
-  save(ctx);
+  buildAsset(ctx);
 
 const getBuild = async ctx => {
   const { ext } = ctx.stats;

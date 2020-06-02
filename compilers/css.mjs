@@ -24,7 +24,7 @@ const preprocess = async (ctx, content, sourceMap, { skipSM }) => {
         .replace(/(['"])([^'"]+)(['"])/g, replacePath3)
         .replace(/\s+([^\s'"]+\.(css|scss|sass|less))/g, replacePath1);
     });
-    // TODO: add url and font-face
+    // TODO: check if it should be transformed in url and font-face
   } ];
   if (ctx.stats.ext === '.scss') {
     const { default: scssSyntax } = await import('postcss-scss');

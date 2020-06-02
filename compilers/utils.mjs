@@ -1,13 +1,13 @@
-// TODO: reimplement streaming-cache
-import Cache from 'streaming-cache';
 import browserslist from 'browserslist';
 import fs from 'fs-extra';
 import path from 'path';
 import stream from 'stream';
+import streamBufferCache from '@hqjs/stream-buffer-cache';
 
 const { Readable } = stream;
 
-const cache = new Cache();
+const Cache = streamBufferCache(Map);
+const cache = new Cache;
 
 const getKey = ctx => ctx.stats.isSrc ?
   path.join(ctx.store.root, ctx.dpath) :
@@ -41,7 +41,6 @@ export const getInputSourceMap = async (srcPath, code) => {
   const [ , mapPath = null ] = code.match(/\/\/#\s*sourceMappingURL=(.*)/) || [];
   try {
     if (!mapPath) {
-      // TODO: test with absolute/relative paths
       const mapData = await fs.readFile(`${srcPath}.map`, { encoding: 'utf8' });
       return JSON.parse(mapData);
     } else if (mapPath.startsWith('data:application/json;charset=utf-8;base64,')) {

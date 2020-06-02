@@ -47,19 +47,47 @@ export default async (content, url, { app, queue }) => {
     !t.isStringLiteral(nodePath.parent.right);
   };
 
-  const isAsset = src => [
+  const ASSETS = new Set([
+    '.bmp',
     '.gif',
+    '.apng',
     '.png',
     '.jpg',
     '.jpeg',
+    '.jfif',
+    '.pjpeg',
+    '.pjp',
     '.svg',
+    '.tif',
+    '.tiff',
     '.webp',
     '.ico',
+    '.cur',
+    '.aac',
+    '.mp3',
+    '.m4a',
+    '.oga',
+    '.ogg',
+    '.flac',
+    '.wav',
+    '.wave',
+    '.3gp',
+    '.3gpp',
+    '.3gp2',
     '.mp4',
+    '.mpg',
+    '.mpeg',
     '.avi',
+    '.webm',
+    '.ogv',
+    '.mov',
+    '.pcm',
+    '.aif',
+    '.dv',
     '.flv',
     // TODO: add more assets extensions
-  ].includes(path.extname(src));
+  ]);
+  const isAsset = src => ASSETS.has(path.extname(src));
 
   const plugins = [
     ({ types: t }) => ({

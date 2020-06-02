@@ -13,7 +13,7 @@ export default () => async ctx => {
   ctx.encoding = ctx.acceptsEncodings([ 'gzip', 'deflate', 'identity' ]);
   ctx.response.vary('Accept-Encoding');
   if (!ctx.encoding) ctx.throw(HTTP_CODES.NOT_ACCEPTABLE, 'supported encodings: gzip, deflate, identity');
-  const compress = ctx.size > COMPRESSION_THRESHOLD &&
+  const compress = (ctx.size > COMPRESSION_THRESHOLD || ctx.stats.ext === '.map') &&
     ctx.encoding !== 'identity' &&
     ctx.stats.compress;
   if (!compress) return null;

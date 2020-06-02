@@ -137,15 +137,11 @@ const resolveFavicon = async ctx => {
 };
 
 const resolveMap = async ctx => {
-  try {
-    ctx.srcPath = `${ctx.srcPath}.map`;
-    ctx.dpath = `${ctx.dpath}.map`;
-    ctx.dirname = path.dirname(ctx.dpath);
-    // TODO: resolve size from build here
-    ctx.size = 0;
-  } catch {
-    ctx.throw(HTTP_CODES.NOT_FOUND, `File ${ctx.dpath} not found`);
-  }
+  ctx.srcPath = `${ctx.srcPath}.map`;
+  ctx.dpath = `${ctx.dpath}.map`;
+  ctx.dirname = path.dirname(ctx.dpath);
+  // TODO: resolve size from build here
+  ctx.size = 0;
 };
 
 const resolveFile = async ctx => {

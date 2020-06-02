@@ -141,8 +141,7 @@ export default async (content, url, { app, entries, queue }) => {
     tree => {
       const promises = [];
       tree.match({ tag: 'style' }, node => {
-        const [ nodeContent ] = node.content;
-        // FIXME: should it be node.content.join('');
+        const nodeContent = node.content.join('');
         promises.push(buildCss(nodeContent, `${url}-${styleIndex++}.css`, { app, queue }).then(code => {
           node.content = [ code ];
         }));

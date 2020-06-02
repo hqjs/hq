@@ -19,7 +19,6 @@ import babelPresetMinify from 'babel-preset-minify';
 import babelPresetReact from '@babel/preset-react';
 // import babelSyntaxAsyncGenerators from '@babel/plugin-syntax-async-generators';
 // import babelSyntaxDynamicImport from '@babel/plugin-syntax-dynamic-import';
-import babelSyntaxImportMeta from '@babel/plugin-syntax-import-meta';
 // import babelSyntaxJsonString from '@babel/plugin-syntax-json-strings';
 // import babelSyntaxNullishCoalescing from '@babel/plugin-syntax-nullish-coalescing-operator';
 // import babelSyntaxNumericSeparator from '@babel/plugin-syntax-numeric-separator';
@@ -33,6 +32,7 @@ import babelTransformDecorators from '@babel/plugin-proposal-decorators';
 import babelTransformExportDefault from '@babel/plugin-proposal-export-default-from';
 import babelTransformExportNamespace from '@babel/plugin-proposal-export-namespace-from';
 import babelTransformPrivateMethods from '@babel/plugin-proposal-private-methods';
+import babelTransformTypescriptConstEnum from 'babel-plugin-const-enum';
 // import babelTransformUnicodePropertyRegex from '@babel/plugin-proposal-unicode-property-regex';
 import fs from 'fs-extra';
 import hqDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
@@ -66,7 +66,6 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
   if (!isTS && !isTSX) tsOptions.decoratorsBeforeExport = true;
 
   const prePlugins = [
-    babelSyntaxImportMeta,
     babelTransformExportDefault,
     babelTransformExportNamespace,
     [ babelTransformDecorators, tsOptions ],
@@ -91,6 +90,7 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
 
   if (isTS || isTSX) {
     prePlugins.unshift(
+      babelTransformTypescriptConstEnum,
       [ hqTransformTypescript, {
         allowNamespaces: true,
         isTSX,
@@ -113,7 +113,6 @@ const getPlugins = (ctx, skipHQTrans, styleMaps) => {
   if (skipHQTrans) return [];
 
   const plugins = [
-    babelSyntaxImportMeta,
     [ hqTransformPaths, {
       baseURI: '', // ctx.store.baseURI,
       dirname: ctx.dirname,
@@ -349,7 +348,6 @@ const precompile = async (ctx, content, sourceMap) => {
 //     babelSyntaxOptionalCatch,
 //     babelSyntaxOptionalChaining,
 //     babelSyntaxTopLevelAwait,
-//     babelSyntaxImportMeta,
 //     [ babelTransformClassProperties, { loose: true }],
 //     [ babelTransformPrivateMethods, { loose: true }],
 //     babelTransformUnicodePropertyRegex,

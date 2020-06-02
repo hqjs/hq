@@ -73,5 +73,5 @@ export const changeStyleExt = src => {
   return `${src}.css`;
 };
 
-export const fetch = (url, options) => nodeFetch(url, options)
-  .catch(() => nodeFetch(url, options));
+export const fetch = (url, options) => nodeFetch(url, { timeout: 60000, ...options })
+  .catch(() => nodeFetch(url, { timeout: 60000, ...options }));
