@@ -10,6 +10,7 @@ import {
 import {
   isPolyfill,
   isWorker,
+  readPackageJSON,
 } from '../utils.mjs';
 import babel from '@babel/core';
 import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
@@ -30,7 +31,6 @@ import babelPresetReact from '@babel/preset-react';
 import babelTransformClassProperties from '@babel/plugin-proposal-class-properties';
 import babelTransformDecorators from '@babel/plugin-proposal-decorators';
 import babelTransformExportDefault from '@babel/plugin-proposal-export-default-from';
-import babelTransformExportNamespace from '@babel/plugin-proposal-export-namespace-from';
 import babelTransformPrivateMethods from '@babel/plugin-proposal-private-methods';
 import babelTransformTypescriptConstEnum from 'babel-plugin-const-enum';
 // import babelTransformUnicodePropertyRegex from '@babel/plugin-proposal-unicode-property-regex';
@@ -67,7 +67,6 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
 
   const prePlugins = [
     babelTransformExportDefault,
-    babelTransformExportNamespace,
     [ babelTransformDecorators, tsOptions ],
     hqTransformParameterDecorators,
     [ babelTransformClassProperties, { loose: true }],
@@ -109,7 +108,7 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
   return prePlugins;
 };
 
-const getPlugins = (ctx, skipHQTrans, styleMaps) => {
+const getPlugins = (ctx, skipHQTrans, styleMaps, browser) => {
   if (skipHQTrans) return [];
 
   const plugins = [
@@ -117,9 +116,9 @@ const getPlugins = (ctx, skipHQTrans, styleMaps) => {
       baseURI: '', // ctx.store.baseURI,
       dirname: ctx.dirname,
     }],
-    [ hqTransformNameImports, { resolve: { vue: 'vue/dist/vue.esm.js' } }],
+    [ hqTransformNameImports, { browser, empty: '/hq-empty-module.js', resolve: { vue: 'vue/dist/vue.esm.js' } }],
     [ hqTransformCssImport, { styleMaps }],
-    [ hqTransformJsonImport, { dirname: ctx.stats.dirname }],
+    [ hqTransformJsonImport, { dirname: ctx.stats.dirname, root: path.resolve(ctx.app.root, ctx.app.src) }],
     hqExposeGlobalToWindow,
   ];
 
@@ -186,7 +185,6 @@ const getPostPresets = (ctx, skipHQTrans) => {
     postPresets.push([ babelPresetMinify, {
       builtIns: false,
       deadcode: false,
-      evaluate: false,
       mangle: false,
       typeConstructors: !isPolyfill(ctx.path),
     }]);
@@ -195,11 +193,11 @@ const getPostPresets = (ctx, skipHQTrans) => {
   return postPresets;
 };
 
-const getBabelSetup = (ctx, skipHQTrans, styleMaps) => {
+const getBabelSetup = (ctx, skipHQTrans, styleMaps, browser) => {
   const skipPoly = isPolyfill(ctx.path) || isWorker(ctx.path) || !ctx.module;
 
   return {
-    plugins: getPlugins(ctx, skipHQTrans, styleMaps),
+    plugins: getPlugins(ctx, skipHQTrans, styleMaps, browser),
     postPresets: getPostPresets(ctx, skipHQTrans),
     prePlugins: getPrePlugins(ctx, skipHQTrans, skipPoly),
     presets: getPresets(ctx, skipPoly),
@@ -463,8 +461,9 @@ const compileCSSModules = async (ctx, content) => {
 const compileJS = async (ctx, content, sourceMap, { skipHQTrans = false, skipSM = false } = {}) => {
   const { inputContent, inputSourceMap } = await precompile(ctx, content, sourceMap);
   const styleMaps = await compileCSSModules(ctx, content);
+  const { browser } = await readPackageJSON(path.resolve(ctx.app.root, ctx.dirname.slice(1)));
 
-  const { plugins, postPresets, prePlugins, presets } = getBabelSetup(ctx, skipHQTrans, styleMaps);
+  const { plugins, postPresets, prePlugins, presets } = getBabelSetup(ctx, skipHQTrans, styleMaps, browser);
 
   const { ast } = await babel.transformAsync(inputContent, {
     ast: true,

@@ -56,7 +56,7 @@ const resolveInternal = async ctx => {
 
 const resolvePolyfill = async ctx => {
   try {
-    const srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.dpath);
+    const srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.dpath, ctx.app.hqroot);
     ctx.srcPath = await fs.realpath(srcPath);
     const stats = await fs.lstat(ctx.srcPath);
     ctx.size = stats.size;
@@ -65,7 +65,7 @@ const resolvePolyfill = async ctx => {
   } catch {
     if (isMap(ctx.dpath)) {
       try {
-        ctx.srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.dpath.slice(0, -4));
+        ctx.srcPath = await resolvePackageFrom(ctx.app.hqroot, ctx.dpath.slice(0, -4), ctx.app.hqroot);
         ctx.dpath = getModulePath(ctx.srcPath);
         await resolveMap(ctx);
       } catch {
@@ -77,7 +77,7 @@ const resolvePolyfill = async ctx => {
 
 const resolveVendor = async ctx => {
   try {
-    const srcPath = await resolvePackageFrom(ctx.app.root, ctx.dpath);
+    const srcPath = await resolvePackageFrom(ctx.app.root, ctx.dpath, ctx.app.hqroot);
     ctx.srcPath = await fs.realpath(srcPath);
     const stats = await fs.lstat(ctx.srcPath);
     ctx.size = stats.size;
@@ -86,7 +86,7 @@ const resolveVendor = async ctx => {
   } catch {
     if (isMap(ctx.dpath)) {
       try {
-        ctx.srcPath = await resolvePackageFrom(ctx.app.root, ctx.dpath.slice(0, -4));
+        ctx.srcPath = await resolvePackageFrom(ctx.app.root, ctx.dpath.slice(0, -4), ctx.app.hqroot);
         ctx.dpath = getModulePath(ctx.srcPath);
         await resolveMap(ctx);
       } catch {

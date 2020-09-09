@@ -48,8 +48,7 @@ export default async (ctx, content) => {
           !node.attrs.src.startsWith('https://') &&
           !node.attrs.src.startsWith('http://')
         ) {
-          // FIXME: there should be module root, not app root
-          promises.push(resolvePackageFrom(ctx.app.root, `/node_modules/${node.attrs.src}`)
+          promises.push(resolvePackageFrom(ctx.app.root, `/node_modules/${node.attrs.src}`, ctx.app.hqroot)
             .then(modulePath => fs.pathExists(modulePath).then(exists => {
               if (exists) {
                 node.attrs.src = `/node_modules/${node.attrs.src}`;

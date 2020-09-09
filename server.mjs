@@ -65,7 +65,7 @@ const setUp = async (app, {
 
 export default async (ROOT, PORT, { build, buildArg, verbose } = {}) => {
   const app = new Koa;
-  const { certs, server } = await getServer({ app, host: '0.0.0.0', port: PORT });
+  const { certs, server } = await getServer({ app, host: '0.0.0.0', port: PORT, root: ROOT });
 
   await setUp(app, {
     ROOT,

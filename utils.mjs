@@ -6,6 +6,8 @@ import resolvePackage from 'resolve';
 
 const MAX_RETRY = 30;
 
+const packageJSONMap = new Map;
+
 const getLocalIP = () => {
   const interfaces = os.networkInterfaces();
   for (const intfs of Object.values(interfaces)) {
@@ -56,20 +58,24 @@ export const WATCH_EXTENSIONS = [
   'frag',
 ];
 
+const matchesModule = (filePath, module) =>
+  filePath === `/node_modules/${module}` || filePath.startsWith(`/node_modules/${module}/`);
+
 export const isMap = filePath => path.extname(filePath).toLowerCase() === '.map';
 
 export const isTest = filePath => filePath.startsWith('/test/');
 
 export const isVendor = filePath => filePath.startsWith('/node_modules/');
 
-export const isPolyfill = filePath => filePath.startsWith('/node_modules/core-js/') ||
-  filePath.startsWith('/node_modules/buffer') ||
-  filePath.startsWith('/node_modules/base64-js') ||
-  filePath.startsWith('/node_modules/ieee754') ||
-  filePath.startsWith('/node_modules/process') ||
-  filePath.startsWith('/node_modules/regenerator-runtime');
+export const isPolyfill = filePath => matchesModule(filePath, 'core-js') ||
+  matchesModule(filePath, 'buffer') ||
+  matchesModule(filePath, 'base64-js') ||
+  matchesModule(filePath, 'ieee754') ||
+  matchesModule(filePath, 'process') ||
+  matchesModule(filePath, 'regenerator-runtime');
 
-export const isInternal = filePath => filePath.includes('/hq-livereload.js');
+export const isInternal = filePath =>
+  filePath.includes('/hq-livereload.js') || filePath.includes('/hq-empty-module.js');
 
 export const isCertificate = (filePath, app) => app.certs.includes(filePath);
 
@@ -180,38 +186,115 @@ export const getPackageJSONDir = async dir => {
 
 export const readPackageJSON = async (dir, { search = true } = {}) => {
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
+  if (packageJSONMap.has(dirPath)) return packageJSONMap.get(dirPath);
   try {
-    return JSON.parse(await fs.readFile(`${dirPath}/package.json`, { encoding: 'utf8' }));
+    const packageJSON = await fs.readFile(`${dirPath}/package.json`, { encoding: 'utf8' });
+    const { browser, main, module, version } = JSON.parse(packageJSON);
+    const filteredJSON = { browser, main, module, version };
+    packageJSONMap.set(dirPath, filteredJSON);
+    return filteredJSON;
   } catch {
     return {};
   }
 };
 
-// FIXME: make it work advanced package.json browser
 export const resolvePackageMain = async (dir, { search = false } = {}) => {
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
   const packageJSON = await readPackageJSON(dirPath, { search: false });
   return packageJSON.module ||
     (typeof packageJSON.browser === 'string' && packageJSON.browser) ||
+    (
+      typeof packageJSON.browser === 'object' &&
+      packageJSON.browser && packageJSON.main &&
+      (packageJSON.browser[`./${packageJSON.main}`] || packageJSON.browser[packageJSON.main])
+    ) ||
     packageJSON.main ||
     `index${await findExistingExtension(`${dirPath}/index`)}`;
 };
 
-// FIXME: make it work advanced package.json browser
-export const resolvePackageFrom = (basedir, filePath) => new Promise((resolve, reject) => {
+const resolveOrModify = (pkgPath, pkg, { emptyPath, resolve, result }) => {
+  const pkgBasename = pkgPath.slice(0, -path.extname(pkgPath).length);
+  if (typeof pkg.browser[pkgPath] === 'string') {
+    result.modified = true;
+    pkg.main = pkg.browser[pkgPath];
+  } else if (typeof pkg.browser[pkgPath] === 'boolean') {
+    result.resolved = true;
+    resolve(emptyPath);
+  } else if (typeof pkg.browser[`./${pkgPath}`] === 'string') {
+    result.modified = true;
+    pkg.main = pkg.browser[`./${pkgPath}`];
+  } else if (typeof pkg.browser[`./${pkgPath}`] === 'boolean') {
+    result.resolved = true;
+    resolve(emptyPath);
+  } else if (typeof pkg.browser[`./${pkgPath}.js`] === 'string') {
+    result.modified = true;
+    pkg.main = pkg.browser[`./${pkgPath}.js`];
+  } else if (typeof pkg.browser[`./${pkgPath}.js`] === 'boolean') {
+    result.resolved = true;
+    resolve(emptyPath);
+  } else if (typeof pkg.browser[`./${pkgBasename}.js`] === 'string') {
+    result.modified = true;
+    pkg.main = pkg.browser[`./${pkgBasename}.js`];
+  } else if (typeof pkg.browser[`./${pkgBasename}.js`] === 'boolean') {
+    result.resolved = true;
+    resolve(emptyPath);
+  }
+};
+
+export const resolvePackageFrom = (basedir, filePath, hqroot) => new Promise((resolve, reject) => {
+  const emptyPath = path.resolve(hqroot, 'hq-empty-module.js');
   const [ , modName ] = filePath.split('/node_modules/');
+  const modPath = modName
+    .split('/')
+    .slice(1)
+    .join('/');
   const modResolve = resolvePackage.isCore(modName) ? `${modName}/` : modName;
+  const result = {
+    modified: false,
+    resolved: false,
+  };
   return resolvePackage(
     modResolve,
     {
       basedir,
+      extensions: [
+        '.js',
+        '.jsx',
+        '.mjs',
+        '.es6',
+        '.vue',
+        '.svelte',
+        '.ts',
+        '.tsx',
+        '.coffee',
+        '.css',
+        '.scss',
+        '.sass',
+        '.less',
+        '.pug',
+        '.html',
+      ],
       packageFilter(pkg) {
-        if (pkg.browser && typeof pkg.browser === 'string') pkg.main = pkg.browser;
+        const { main: pkgMain } = pkg;
         if (pkg.module) pkg.main = pkg.module;
+        if (typeof pkg.browser === 'string') pkg.main = pkg.browser;
+        else if (typeof pkg.browser === 'object' && pkg.browser) {
+          if (modPath) {
+            resolveOrModify(modPath, pkg, { emptyPath, resolve, result });
+          } else if (pkgMain) {
+            resolveOrModify(pkgMain, pkg, { emptyPath, resolve, result });
+          } else if (pkg.module) {
+            resolveOrModify(pkg.module, pkg, { emptyPath, resolve, result });
+          }
+        }
         return pkg;
+      },
+      pathFilter(pkg, fullPath, relativePath) {
+        return result.modified ? pkg.main : relativePath;
       },
     },
     (err, p) => {
+      if (result.resolved) return;
       if (err) reject(err);
       resolve(p);
     },
@@ -223,7 +306,7 @@ export const readPlugins = async (ctx, config) => {
     const { plugins } = JSON.parse(await fs.readFile(path.resolve(ctx.app.root, config), { encoding: 'utf-8' }));
     const pluginsConfig = await Promise.all(plugins.map(async p => {
       const [ pluginName, ...args ] = Array.isArray(p) ? p : [ p ];
-      const pluginPath = await resolvePackageFrom(ctx.app.root, `/node_modules/${pluginName}`);
+      const pluginPath = await resolvePackageFrom(ctx.app.root, `/node_modules/${pluginName}`, ctx.app.hqroot);
       const { default: plugin } = await import(pluginPath);
       return { args, plugin };
     }));
@@ -234,7 +317,18 @@ export const readPlugins = async (ctx, config) => {
 };
 
 /* eslint-disable no-unused-expressions */
-const getFreeServer = ({ app, certs, cfg, host, net, port, retry, s, secure }) => new Promise((resolve, reject) => {
+const getFreeServer = ({
+  app,
+  certs,
+  cfg,
+  host,
+  net,
+  port,
+  retry,
+  root,
+  s,
+  secure,
+}) => new Promise((resolve, reject) => {
   const server = secure ?
     net.createSecureServer({ allowHTTP1: true, ...cfg }, app.callback()) :
     net.createServer(app.callback());
@@ -252,18 +346,18 @@ const getFreeServer = ({ app, certs, cfg, host, net, port, retry, s, secure }) =
     }
     import('./compilers/html.mjs');
     resolve({
-      certs: certs.map(crt => crt.slice(app.root.length)),
+      certs: certs.map(crt => crt.slice(root.length)),
       server,
     });
   });
 }).catch(err => {
   if (retry > MAX_RETRY) throw err;
-  return getFreeServer({ app, certs, cfg, host, net, port: port + 1, retry: retry + 1, s, secure });
+  return getFreeServer({ app, certs, cfg, host, net, port: port + 1, retry: retry + 1, root, s, secure });
 });
 /* eslint-enable no-unused-expressions */
 
-export const getServer = async ({ app, host, port }) => {
-  const certs = await fg(`${app.root}/**/*.pem`, { ignore: [ `${app.root}/node_modules/**` ] });
+export const getServer = async ({ app, host, port, root }) => {
+  const certs = await fg(`${root}/**/*.pem`, { ignore: [ `${root}/node_modules/**` ] });
   const cfg = (await Promise.all(certs.slice(0, 2).map(crt => fs.readFile(crt))))
     .reduce(
       ({ cert, key }, file, index) => certs[index].endsWith('key.pem') ?
@@ -286,6 +380,7 @@ export const getServer = async ({ app, host, port }) => {
     net,
     port,
     retry: 0,
+    root,
     s,
     secure,
   });
