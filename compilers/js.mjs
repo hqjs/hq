@@ -34,6 +34,7 @@ import babelTransformExportDefault from '@babel/plugin-proposal-export-default-f
 import babelTransformPrivateMethods from '@babel/plugin-proposal-private-methods';
 import babelTransformTypescriptConstEnum from 'babel-plugin-const-enum';
 // import babelTransformUnicodePropertyRegex from '@babel/plugin-proposal-unicode-property-regex';
+import crypto from 'crypto';
 import fs from 'fs-extra';
 import hqDecoratorMetadata from '@hqjs/babel-plugin-add-decorators-metadata';
 import hqExposeGlobalToWindow from '@hqjs/babel-plugin-expose-global-to-window';
@@ -111,12 +112,17 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
 const getPlugins = (ctx, skipHQTrans, styleMaps, browser) => {
   if (skipHQTrans) return [];
 
+  const { major: vueVersion } = ctx.app.dependencies.vue;
+  const vue = vueVersion === 3 ?
+    'vue/dist/vue.esm-browser.js' :
+    'vue/dist/vue.esm.js';
+
   const plugins = [
     [ hqTransformPaths, {
       baseURI: '', // ctx.store.baseURI,
       dirname: ctx.dirname,
     }],
-    [ hqTransformNameImports, { browser, empty: '/hq-empty-module.js', resolve: { vue: 'vue/dist/vue.esm.js' } }],
+    [ hqTransformNameImports, { browser, empty: '/hq-empty-module.js', resolve: { vue } }],
     [ hqTransformCssImport, { styleMaps }],
     [ hqTransformJsonImport, { dirname: ctx.stats.dirname, root: path.resolve(ctx.app.root, ctx.app.src) }],
     hqExposeGlobalToWindow,
@@ -185,6 +191,7 @@ const getPostPresets = (ctx, skipHQTrans) => {
     postPresets.push([ babelPresetMinify, {
       builtIns: false,
       deadcode: false,
+      evaluate: false, // FIXME: https://github.com/babel/minify/issues/986
       mangle: false,
       typeConstructors: !isPolyfill(ctx.path),
     }]);
@@ -215,13 +222,97 @@ const precompileCoffee = async (ctx, content, sourceMap) => {
   return { inputContent, inputSourceMap };
 };
 
+/* eslint-disable max-statements, max-depth */
+// TODO: refactor
 const precompileVue = async (ctx, content) => {
-  const { default: Vue } = await import('@vue/component-compiler');
-  const compiler = Vue.createDefaultCompiler();
-  const descriptor = compiler.compileToDescriptor(ctx.path, content);
-  const res = Vue.assemble(compiler, ctx.path, descriptor);
-  return { inputContent: res.code, inputSourceMap: res.map };
+  const hash = crypto.createHash('md5')
+    .update(ctx.dpath)
+    .digest('hex');
+  const { major: vueVersion } = ctx.app.dependencies.vue;
+  if (vueVersion === 3) {
+    const { default: Vue } = await import(getProjectModulePath(
+      ctx.app.root,
+      '@vue/compiler-sfc/dist/compiler-sfc.cjs.js',
+    ));
+    const { descriptor, errors } = Vue.parse(content, { filename: ctx.dpath, needMap: true });
+    if (errors && errors.length > 0) {
+      console.error(JSON.stringify(errors));
+    }
+    let code = '';
+    let sourceMap;
+    if (descriptor.script || descriptor.scriptSetup) {
+      const script = Vue.compileScript(descriptor);
+      code += script.content.replace('export default', 'const __vue_component__ =');
+      sourceMap = script.map;
+    } else code += 'const __vue_component__ = {};';
+
+    let hasScoped = false;
+    let hasCSSModules = false;
+    if (descriptor.styles) {
+      for (const [ index, style ] of descriptor.styles.entries()) {
+        // TODO: use postcss config
+        const styleCode = await Vue.compileStyleAsync({
+          filename: ctx.dpath,
+          id: `data-v-${hash}`,
+          modules: style.module != null,
+          preprocessLang: style.lang,
+          scoped: style.scoped != null,
+          source: style.content,
+        });
+        if (styleCode.errors && styleCode.errors.length > 0) {
+          console.error(JSON.stringify(styleCode.errors));
+        }
+        if (style.scoped) hasScoped = true;
+        if (style.module) {
+          if (!hasCSSModules) {
+            code += '\n__vue_component__.__cssModules = {}';
+            hasCSSModules = true;
+          }
+          const moduleName = typeof style.module === 'string' ? style.module : '$style';
+          code += `\n__vue_component__.__cssModules[${JSON.stringify(moduleName)}] = ${JSON.stringify(styleCode.modules)}`;
+        }
+        code += `
+          const __vue_style__${index} = document.createElement('style');
+          __vue_style__${index}.textContent = \`${styleCode.code}\`;
+          document.body.appendChild(__vue_style__${index});
+        `;
+      }
+      if (hasScoped) {
+        code += `\n__vue_component__.__scopeId = "data-v-${hash}"`;
+      }
+    }
+
+    if (descriptor.template) {
+      const templateCode = Vue.compileTemplate({
+        compilerOptions: {
+          scopeId: hasScoped ?
+            `data-v-${hash}` :
+            null,
+        },
+        filename: ctx.dpath,
+        preprocessLang: descriptor.template.lang,
+        source: descriptor.template.content,
+        transformAssetUrls: false,
+      });
+      if (templateCode.errors && templateCode.errors.length > 0) {
+        console.error(JSON.stringify(templateCode.errors));
+      }
+      code += `\n${templateCode.code}\n`;
+      code += '\n__vue_component__.render = render';
+      code += `\n__vue_component__.__file = ${JSON.stringify(ctx.path)}`;
+      code += '\nexport default __vue_component__';
+    }
+    return { inputContent: code, inputSourceMap: sourceMap };
+  } else {
+    // TODO: use compiler from repository
+    const { default: Vue } = await import('@vue/component-compiler');
+    const compiler = Vue.createDefaultCompiler();
+    const descriptor = compiler.compileToDescriptor(ctx.path, content);
+    const res = Vue.assemble(compiler, ctx.path, descriptor);
+    return { inputContent: res.code, inputSourceMap: res.map };
+  }
 };
+/* eslint-enable max-statements, max-depth */
 
 const precompileSvelte = async (ctx, content) => {
   let scriptIndex = 0;

@@ -50,8 +50,6 @@ It will do proper tree shaking and consist of both `module` and `nomodule` versi
 
 ⚠️  Previous content of `dist` folder will be erased.
 
-⚠️  This feature is experimental raise an [issue](https://github.com/hqjs/hq/issues) if you experience a problem.
-
 # Why hq?
 
 There are many development tools out there, including `browserify`, `webpack`, `rollup` and `parcel`, that provide development servers. But all of them rely on bundling. While bundling might still be usefull for production, it makes the development experience quite a struggle.
@@ -64,7 +62,7 @@ It is worth to say that `hq` requires no configuration, offering the familiar ex
 
 # How it works
 
-`hq` serves every file individually as requested, same way regular static server does. That gives you only very simple dead code elimination without proper tree shaking, but on the other hand a lot of time that was wasted for dependency analysis is being saved. All transforamtions are instant and performed on the fly during the first request. If you use modern browser and stick to the standard your code would hardly be changed at all.
+In server mode `hq` serves every file individually as requested, same way regular static server does. That gives you only very simple dead code elimination without proper tree shaking, but on the other hand a lot of time that was wasted for dependency analysis is being saved. All transforamtions are instant and performed on the fly during the first request. If you use modern browser and stick to the standard your code would hardly be changed at all.
 
 While you try to follow the standards, you can't guarantee that all that libraries that you depend on will do the same. Most of them will probably use commonjs modules format and won't work in the browser just as they are. `hq` takes care of that as well and transforms commonjs modules into ESM, handles non standard, but pretty common imports (like css or json importing) and destructure importing objects when it is required.
 
@@ -107,7 +105,7 @@ in the project root.
 
 # Is it good for production?
 
-Yes, it supports most of the projects in production mode (yet it is experimental at the moment, raise an [issue](https://github.com/hqjs/hq/issues) if you experience the problem). To activate production mode set `NODE_ENV` to production before running `hq`
+You can use `hq` as a production server for internal projects such as admin panels and dashboards. It will work perfectly with all modern browsers. To activate production mode set `NODE_ENV` to production before running `hq`
 ```sh
 NODE_ENV=production hq
 ```
@@ -119,6 +117,7 @@ Yes, it does. Drop your certificate and a key somewhere in the root of your proj
 cert/server.pem
 cert/server-key.pem
 ```
+For generating self signed certificates check this [tool](https://github.com/FiloSottile/mkcert).
 
 # More benefits with .babelrc, .postcssrc and .posthtmlrc
 

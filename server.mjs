@@ -1,4 +1,4 @@
-import { getServer, getSrc } from './utils.mjs';
+import { getServer, getSrc, getVersion, readPackageJSON } from './utils.mjs';
 import Koa from 'koa';
 import Table from './res/table.mjs';
 import fs from 'fs-extra';
@@ -47,6 +47,12 @@ const setUp = async (app, {
   const { port } = server.address();
   const babelRCPath = path.join(ROOT, '.babelrc');
   const useBabelRC = await fs.pathExists(babelRCPath);
+  const packageJSON = await readPackageJSON(
+    ROOT,
+    { search: false },
+    [ 'browser', 'main', 'module', 'version', 'dependencies' ],
+  );
+  const vue = getVersion(packageJSON.dependencies, 'vue');
 
   app.build = build;
   app.hqroot = HQ_ROOT;
@@ -61,6 +67,7 @@ const setUp = async (app, {
   app.babelrc = useBabelRC ? babelRCPath : undefined;
   app.verbose = verbose;
   app.startTime = Date.now();
+  app.dependencies = { vue };
 };
 
 export default async (ROOT, PORT, { build, buildArg, verbose } = {}) => {

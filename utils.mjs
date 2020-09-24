@@ -58,6 +58,18 @@ export const WATCH_EXTENSIONS = [
   'frag',
 ];
 
+export const getVersion = (dependencies, name) => {
+  if (!dependencies) return {};
+  const version = dependencies[name];
+  if (!version) return {};
+  const [ major, minor, patch ] = version.match(/\d+/g);
+  return {
+    major: Number(major),
+    minor: Number(minor),
+    patch: Number(patch),
+  };
+};
+
 const matchesModule = (filePath, module) =>
   filePath === `/node_modules/${module}` || filePath.startsWith(`/node_modules/${module}/`);
 
@@ -184,13 +196,19 @@ export const getPackageJSONDir = async dir => {
   return dirPath;
 };
 
-export const readPackageJSON = async (dir, { search = true } = {}) => {
+export const readPackageJSON = async (
+  dir,
+  { search = true } = {},
+  fields = [ 'browser', 'main', 'module', 'version' ],
+) => {
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
   if (packageJSONMap.has(dirPath)) return packageJSONMap.get(dirPath);
   try {
-    const packageJSON = await fs.readFile(`${dirPath}/package.json`, { encoding: 'utf8' });
-    const { browser, main, module, version } = JSON.parse(packageJSON);
-    const filteredJSON = { browser, main, module, version };
+    const packageJSON = JSON.parse(await fs.readFile(`${dirPath}/package.json`, { encoding: 'utf8' }));
+    const filteredJSON = {};
+    for (const field of fields) {
+      filteredJSON[field] = packageJSON[field];
+    }
     packageJSONMap.set(dirPath, filteredJSON);
     return filteredJSON;
   } catch {
