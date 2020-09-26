@@ -1,10 +1,10 @@
 import cssnano from 'cssnano';
-import { getBrowsersList } from './utils.mjs';
-import path from 'path';
+import { getBrowsersList } from './tools.mjs';
+import { pathToURL } from '../utils.mjs';
 import postcss from 'postcss';
 import postcssPresetEnv from 'postcss-preset-env';
-import { readPlugins } from '../utils.mjs';
-
+import querystring from 'querystring';
+import url from 'url';
 export const modulesCache = new Map;
 
 const preprocess = async (ctx, content, sourceMap, { skipSM }) => {
@@ -12,12 +12,12 @@ const preprocess = async (ctx, content, sourceMap, { skipSM }) => {
   const prePlugins = [ root => {
     const replacePath3 = (math, p1, styleImport, p2) =>
       styleImport.startsWith('/') ?
-        `${p1}${path.resolve(ctx.app.src, styleImport.slice(1))}${p2}` :
-        `${p1}.${path.resolve(ctx.dirname, styleImport)}${p2}`;
+        `${p1}${url.resolve(`${pathToURL(querystring.escape(ctx.app.src))}/`, styleImport.slice(1))}${p2}` :
+        `${p1}.${url.resolve(`${querystring.escape(ctx.dirname)}/`, styleImport)}${p2}`;
     const replacePath1 = (match, styleImport) =>
       styleImport.startsWith('/') ?
-        `${path.resolve(ctx.app.src, styleImport.slice(1))}` :
-        `.${path.resolve(ctx.dirname, styleImport)}`;
+        `${url.resolve(`${pathToURL(querystring.escape(ctx.app.src))}/`, styleImport.slice(1))}` :
+        `.${url.resolve(`${querystring.escape(ctx.dirname)}/`, styleImport)}`;
     root.walkAtRules('import', rule => {
       rule.params = rule.params
         .replace(/(url\(['"]*)([^'")]+)(['"]*\))/g, replacePath3)
@@ -76,8 +76,6 @@ const precompile = async (ctx, content, sourceMap) => {
 };
 
 const compile = async (ctx, content, sourceMap, { skipSM, useModules }) => {
-  const cssPlugins = await readPlugins(ctx, '.postcssrc');
-
   const { ua } = ctx.store;
   const presetOptions = {
     features: {
@@ -92,7 +90,7 @@ const compile = async (ctx, content, sourceMap, { skipSM, useModules }) => {
     presetOptions.browsers = getBrowsersList(ua);
   }
   const plugins = [
-    ...cssPlugins,
+    ...ctx.app.cssPlugins,
     postcssPresetEnv(presetOptions),
   ];
 

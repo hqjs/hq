@@ -11,6 +11,7 @@ import {
   isVendor,
   resolvePackageFrom,
   resolvePackageMain,
+  urlToPath,
 } from '../utils.mjs';
 import fs from 'fs-extra';
 import path from 'path';
@@ -42,15 +43,15 @@ export default () => async (ctx, next) => {
   }
   if (ctx.app.verbose) {
     const resolvedPath = isMap(ctx.dpath) ? 'virtual' : `${ctx.srcPath} ${humanReadableSize(ctx.size)}`;
-    console.log(`🔎  RESOLVE    ${ctx.dpath}: ${resolvedPath}`);
+    console.log(`🔎  RESOLVE    ${ctx.path}: ${resolvedPath}`);
   }
   return next();
 };
 
 const resolveInternal = async ctx => {
-  ctx.srcPath = `${ctx.app.hqroot}${ctx.dpath}`;
+  ctx.srcPath = path.join(ctx.app.hqroot, urlToPath(ctx.dpath).slice(1));
   ctx.dirname = path.dirname(ctx.dpath);
-  const stats = ctx.dpath.endsWith('.map') ? { size: 0 } : await fs.lstat(ctx.srcPath);
+  const stats = isMap(ctx.dpath) ? { size: 0 } : await fs.lstat(ctx.srcPath);
   ctx.size = stats.size;
 };
 
@@ -100,8 +101,8 @@ const resolveSrc = async ctx => {
   let isDirectory = false;
   try {
     const relPath = isTest(ctx.dpath) ?
-      `.${ctx.dpath}` :
-      `${ctx.app.src}${ctx.dpath}`;
+      `.${urlToPath(ctx.dpath)}` :
+      path.join(ctx.app.src, urlToPath(ctx.dpath).slice(1));
     ctx.srcPath = path.resolve(ctx.app.root, relPath);
     ctx.srcPath = await fs.realpath(ctx.srcPath);
     const stats = await fs.lstat(ctx.srcPath);

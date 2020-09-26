@@ -1,9 +1,9 @@
-import { getScriptExtensionByAttrs, getStyleExtensionByAttrs } from './utils.mjs';
-import { readPlugins, resolvePackageFrom } from '../utils.mjs';
+import { getScriptExtensionByAttrs, getStyleExtensionByAttrs } from './tools.mjs';
 import compileCSS from './css.mjs';
 import compileJS from './js.mjs';
 import fs from 'fs-extra';
 import posthtml from 'posthtml';
+import { resolvePackageFrom } from '../utils.mjs';
 
 const PUBLIC_URL = '%PUBLIC_URL%';
 
@@ -23,9 +23,8 @@ export default async (ctx, content) => {
     undefined;
   let scriptIndex = 0;
   let styleIndex = 0;
-  const htmlPlugins = await readPlugins(ctx, '.posthtmlrc');
   const plugins = [
-    ...htmlPlugins,
+    ...ctx.app.htmlPlugins,
     tree => {
       tree.match({ tag: 'link' }, node => {
         if (node.attrs && node.attrs.href != null) node.attrs.href = node.attrs.href.replace(PUBLIC_URL, '');
@@ -89,6 +88,7 @@ export default async (ctx, content) => {
         }
         if (!node.attrs || node.attrs.src == null) {
           const ext = getScriptExtensionByAttrs(node.attrs);
+          if (ext === '') return node;
           const worker = node.attrs && node.attrs.type === 'text/js-worker' ? 'worker-' : '';
           const nodeContent = node.content.join('');
           // TODO: check if sourcemaps can be usefull for inline scripts

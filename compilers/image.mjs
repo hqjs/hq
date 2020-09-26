@@ -1,5 +1,5 @@
 import imagemin from 'imagemin';
-import { saveContent } from './utils.mjs';
+import { saveContent } from './tools.mjs';
 
 const TRESHOLD = 1024; // 1Kb
 

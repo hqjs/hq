@@ -6,11 +6,14 @@ import {
   getScriptExtensionByAttrs,
   getStyleExtensionByAttrs,
   saveContent,
-} from './utils.mjs';
+} from './tools.mjs';
 import {
+  isAngularCompiler,
   isPolyfill,
   isWorker,
+  pathToURL,
   readPackageJSON,
+  urlToPath,
 } from '../utils.mjs';
 import babel from '@babel/core';
 import babelMinifyDeadCode from 'babel-plugin-minify-dead-code-elimination';
@@ -55,6 +58,8 @@ import hqTransformPaths from '@hqjs/babel-plugin-transform-paths';
 import hqTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
 import hqTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
 import path from 'path';
+import querystring from 'querystring';
+import url from 'url';
 
 const CSS_MODULES_REX = /import\s+[*a-zA-Z_,{}\s]+\s+from\s+['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
 const CSS_REQUIRE_MODULES_REX = /=\s*require\s*\(\s*['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
@@ -74,7 +79,7 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
     [ babelTransformPrivateMethods, { loose: true }],
     [ hqTransformDefine, {
       // TODO: make it conditional
-      'import.meta': { url: ctx.dpath },
+      'import.meta': { url: querystring.escape(ctx.dpath) },
       'process.env.NODE_ENV': ctx.app.production ? 'production' : 'development',
       'typeof window': 'object',
     }],
@@ -136,7 +141,7 @@ const getPlugins = (ctx, skipHQTrans, styleMaps, browser) => {
     }]);
   }
 
-  if (ctx.dpath.endsWith('compiler/fesm5/compiler.js')) {
+  if (isAngularCompiler(ctx.dpath)) {
     plugins.unshift(hqPatchAngularCompiler);
   }
 
@@ -193,7 +198,7 @@ const getPostPresets = (ctx, skipHQTrans) => {
       deadcode: false,
       evaluate: false, // FIXME: https://github.com/babel/minify/issues/986
       mangle: false,
-      typeConstructors: !isPolyfill(ctx.path),
+      typeConstructors: !isPolyfill(ctx.dpath),
     }]);
   }
 
@@ -201,7 +206,7 @@ const getPostPresets = (ctx, skipHQTrans) => {
 };
 
 const getBabelSetup = (ctx, skipHQTrans, styleMaps, browser) => {
-  const skipPoly = isPolyfill(ctx.path) || isWorker(ctx.path) || !ctx.module;
+  const skipPoly = isPolyfill(ctx.dpath) || isWorker(ctx.dpath) || !ctx.module;
 
   return {
     plugins: getPlugins(ctx, skipHQTrans, styleMaps, browser),
@@ -299,7 +304,7 @@ const precompileVue = async (ctx, content) => {
       }
       code += `\n${templateCode.code}\n`;
       code += '\n__vue_component__.render = render';
-      code += `\n__vue_component__.__file = ${JSON.stringify(ctx.path)}`;
+      code += `\n__vue_component__.__file = ${JSON.stringify(ctx.dpath)}`;
       code += '\nexport default __vue_component__';
     }
     return { inputContent: code, inputSourceMap: sourceMap };
@@ -492,20 +497,22 @@ const compileCSSModules = async (ctx, content) => {
     ...Array.from(content.matchAll(CSS_MODULES_REX)),
     ...Array.from(content.matchAll(CSS_REQUIRE_MODULES_REX)),
   ];
-  const cssModules = styleImports.map(([ , filename ]) => filename);
+  const cssModules = styleImports.map(([ , filename ]) =>
+    urlToPath(querystring.unescape(url.resolve(`${querystring.escapedname(ctx.dirname)}/`, filename))));
   const extensions = styleImports.map(([ ,, ext ]) => ext);
 
   const styleBuilds = cssModules
     .map(async (filename, index) => {
-      const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
-      const fileSrcPath = path.resolve(ctx.app.root, ctx.app.src, filePath.slice(1));
+      const fileSrcPath = path.resolve(ctx.app.root, ctx.app.src, filename.slice(1));
+      const dpath = pathToURL(filename);
       const { ua } = ctx.store;
       if (ctx.app.table.isDirty(fileSrcPath, ua)) {
         const styleContent = await fs.readFile(fileSrcPath, { encoding: 'utf-8' });
         const { code, map } = await compileCSS({
           ...ctx,
-          originalPath: filePath,
-          path: filePath,
+          dpath,
+          originalPath: querystring.escape(dpath),
+          path: querystring.escape(dpath),
           srcPath: fileSrcPath,
           stats: { ...ctx.stats, ext: `.${extensions[index]}` },
         }, styleContent, false, { skipSM: ctx.app.build, useModules: true });
@@ -521,19 +528,24 @@ const compileCSSModules = async (ctx, content) => {
     .filter(({ status }) => status === 'fulfilled')
     .map(({ value: { code, map, styleModules } }, index) => {
       const filename = cssModules[index];
-      const filePath = filename.startsWith('.') ? path.resolve(ctx.dirname, filename) : filename;
-      const fileSrcPath = path.resolve(ctx.app.root, ctx.app.src, filePath.slice(1));
+      const dpath = pathToURL(filename);
+      const fileSrcPath = path.resolve(ctx.app.root, ctx.app.src, filename.slice(1));
       const { ua } = ctx.store;
       if (ctx.app.table.isDirty(fileSrcPath, ua)) {
         const stats = ctx.app.table.touch(fileSrcPath);
-        const styleBuildPromise = saveContent(code, { dpath: filePath, path: filePath, stats, store: ctx.store });
+        const styleBuildPromise = saveContent(code, {
+          dpath,
+          path: querystring.escape(dpath),
+          stats,
+          store: ctx.store,
+        });
         stats.build.set(ua, styleBuildPromise);
         if (map) {
           const mapStats = ctx.app.table.touch(`${fileSrcPath}.map`);
           // TODO: add map byte length here
           const mapBuildPromise = saveContent(JSON.stringify(map), {
-            dpath: `${filePath}.map`,
-            path: `${filePath}.map`,
+            dpath: `${dpath}.map`,
+            path: `${querystring.escape(dpath)}.map`,
             stats: mapStats,
             store: ctx.store,
           });
@@ -552,7 +564,7 @@ const compileCSSModules = async (ctx, content) => {
 const compileJS = async (ctx, content, sourceMap, { skipHQTrans = false, skipSM = false } = {}) => {
   const { inputContent, inputSourceMap } = await precompile(ctx, content, sourceMap);
   const styleMaps = await compileCSSModules(ctx, content);
-  const { browser } = await readPackageJSON(path.resolve(ctx.app.root, ctx.dirname.slice(1)));
+  const { browser } = await readPackageJSON(path.resolve(ctx.app.root, urlToPath(ctx.dirname).slice(1)));
 
   const { plugins, postPresets, prePlugins, presets } = getBabelSetup(ctx, skipHQTrans, styleMaps, browser);
 

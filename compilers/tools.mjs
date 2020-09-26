@@ -68,7 +68,8 @@ export const getScriptExtensionByAttrs = attrs => {
     case 'text/typescript': return '.ts';
     case 'application/jsx':
     case 'text/jsx': return '.jsx';
-    default: return '.js';
+    case 'text/javascript': return '.js';
+    default: return '';
   }
   if (attrs.lang) switch (attrs.lang) {
     case 'coffeescript': return '.coffee';

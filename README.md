@@ -105,7 +105,9 @@ in the project root.
 
 # Is it good for production?
 
-You can use `hq` as a production server for internal projects such as admin panels and dashboards. It will work perfectly with all modern browsers. To activate production mode set `NODE_ENV` to production before running `hq`
+Yes, you can definitely use `hq build` command to make a production ready build with all necessary optimisations created for you by `hq`.
+
+Alternatively, you can use `hq` as a production server for internal projects such as admin panels and dashboards. It will work perfectly with all modern browsers. To activate production mode set `NODE_ENV` to production before running `hq`
 ```sh
 NODE_ENV=production hq
 ```

@@ -1,12 +1,11 @@
-import { getServer, getSrc, getVersion, readPackageJSON } from './utils.mjs';
+import { getServer, getSrc, getVersion, readPackageJSON, readPlugins, urlToPath } from './utils.mjs';
 import Koa from 'koa';
 import Table from './res/table.mjs';
 import fs from 'fs-extra';
 import hq from './hq.mjs';
 import path from 'path';
-import url from 'url';
 
-const HQ_ROOT = path.dirname(url.fileURLToPath(import.meta.url));
+const HQ_ROOT = path.dirname(urlToPath(import.meta.url));
 
 const liveReloadServer = async (app, server) => {
   if (app.production) {
@@ -37,6 +36,7 @@ const liveReloadServer = async (app, server) => {
   return wss;
 };
 
+/* eslint-disable max-statements */
 const setUp = async (app, {
   ROOT,
   build,
@@ -46,7 +46,8 @@ const setUp = async (app, {
 }) => {
   const { port } = server.address();
   const babelRCPath = path.join(ROOT, '.babelrc');
-  const useBabelRC = await fs.pathExists(babelRCPath);
+  const postCSSRCPath = path.join(ROOT, '.postcssrc');
+  const postHTMLRCPath = path.join(ROOT, '.posthtmlrc');
   const packageJSON = await readPackageJSON(
     ROOT,
     { search: false },
@@ -64,11 +65,18 @@ const setUp = async (app, {
   app.port = port;
   app.protocol = server.protocol;
   app.localIP = server.localIP;
-  app.babelrc = useBabelRC ? babelRCPath : undefined;
+  app.babelrc = await fs.pathExists(babelRCPath) ? babelRCPath : undefined;
+  app.postcssrc = await fs.pathExists(postCSSRCPath) ? postCSSRCPath : undefined;
+  app.posthtmlrc = await fs.pathExists(postHTMLRCPath) ? postHTMLRCPath : undefined;
   app.verbose = verbose;
   app.startTime = Date.now();
   app.dependencies = { vue };
+
+  // TODO: invalidate compilation results and cache if config was changed
+  app.cssPlugins = await readPlugins(app, app.postcssrc);
+  app.htmlPlugins = await readPlugins(app, app.posthtmlrc);
 };
+/* eslint-enable max-statements */
 
 export default async (ROOT, PORT, { build, buildArg, verbose } = {}) => {
   const app = new Koa;
@@ -81,6 +89,21 @@ export default async (ROOT, PORT, { build, buildArg, verbose } = {}) => {
     server,
     verbose,
   });
+
+  if (app.verbose) {
+    console.log(`
+| hq root    : ${app.hqroot}
+
+| root       : ${app.root}
+| src        : ${app.src}
+
+| certs      : ${app.certs}
+
+| babelrc    : ${app.babelrc}
+| postcssrc  : ${app.postcssrc}
+| posthtmlrc : ${app.posthtmlrc}
+`);
+  }
 
   app.use(hq());
 

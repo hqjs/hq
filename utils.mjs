@@ -3,6 +3,7 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 import resolvePackage from 'resolve';
+import url from 'url';
 
 const MAX_RETRY = 30;
 
@@ -58,6 +59,10 @@ export const WATCH_EXTENSIONS = [
   'frag',
 ];
 
+export const pathToURL = filePath => url.pathToFileURL(filePath).href.slice('file://'.length).replace(/^[a-zA-Z]:/, '');
+
+export const urlToPath = urlPath => url.fileURLToPath(urlPath.startsWith('file://') ? urlPath : `file://${urlPath}`);
+
 export const getVersion = (dependencies, name) => {
   if (!dependencies) return {};
   const version = dependencies[name];
@@ -94,6 +99,8 @@ export const isCertificate = (filePath, app) => app.certs.includes(filePath);
 export const isWorker = filePath => WORKER_REXP.test(filePath);
 
 export const isDefaultFavicon = filePath => filePath.endsWith('favicon.ico');
+
+export const isAngularCompiler = filePath => filePath.endsWith('compiler/fesm5/compiler.js');
 
 export const isSource = ext => [
   '.pug',
@@ -183,7 +190,7 @@ export const findExistingExtension = async filepath => {
 };
 
 export const getModulePath = filepath => {
-  const parts = filepath.split('/node_modules/');
+  const parts = pathToURL(filepath).split('/node_modules/');
   return `/node_modules/${parts[parts.length - 1]}`;
 };
 
@@ -259,9 +266,10 @@ const resolveOrModify = (pkgPath, pkg, { emptyPath, resolve, result }) => {
   }
 };
 
-export const resolvePackageFrom = (basedir, filePath, hqroot) => new Promise((resolve, reject) => {
+export const resolvePackageFrom = (basedir, dpath, hqroot) => new Promise((resolve, reject) => {
   const emptyPath = path.resolve(hqroot, 'hq-empty-module.js');
-  const [ , modName ] = filePath.split('/node_modules/');
+  const parts = dpath.split('/node_modules/');
+  const modName = parts[parts.length - 1];
   const modPath = modName
     .split('/')
     .slice(1)
@@ -319,12 +327,12 @@ export const resolvePackageFrom = (basedir, filePath, hqroot) => new Promise((re
   );
 });
 
-export const readPlugins = async (ctx, config) => {
+export const readPlugins = async (app, config) => {
   try {
-    const { plugins } = JSON.parse(await fs.readFile(path.resolve(ctx.app.root, config), { encoding: 'utf-8' }));
+    const { plugins } = JSON.parse(await fs.readFile(config, { encoding: 'utf-8' }));
     const pluginsConfig = await Promise.all(plugins.map(async p => {
       const [ pluginName, ...args ] = Array.isArray(p) ? p : [ p ];
-      const pluginPath = await resolvePackageFrom(ctx.app.root, `/node_modules/${pluginName}`, ctx.app.hqroot);
+      const pluginPath = await resolvePackageFrom(app.root, `/node_modules/${pluginName}`, app.hqroot);
       const { default: plugin } = await import(pluginPath);
       return { args, plugin };
     }));
