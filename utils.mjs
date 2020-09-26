@@ -61,14 +61,7 @@ export const WATCH_EXTENSIONS = [
 
 export const pathToURL = filePath => url.pathToFileURL(filePath).href.slice('file://'.length).replace(/^[a-zA-Z]:/, '');
 
-export const urlToPath = urlPath => {
-  if (path.sep === '\\') {
-    return urlPath.startsWith('/') ?
-      url.fileURLToPath(`file:/${urlPath}`).slice(1) :
-      url.fileURLToPath(urlPath.startsWith('file://') ? urlPath : `file://${urlPath}`);
-  }
-  return url.fileURLToPath(urlPath.startsWith('file://') ? urlPath : `file://${urlPath}`);
-};
+export const urlToPath = urlPath => path.sep === '\\' ? urlPath.replace(/\//g, '\\') : urlPath;
 
 export const getVersion = (dependencies, name) => {
   if (!dependencies) return {};

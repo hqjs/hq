@@ -1,11 +1,12 @@
-import { getServer, getSrc, getVersion, readPackageJSON, readPlugins, urlToPath } from './utils.mjs';
+import { getServer, getSrc, getVersion, readPackageJSON, readPlugins } from './utils.mjs';
 import Koa from 'koa';
 import Table from './res/table.mjs';
 import fs from 'fs-extra';
 import hq from './hq.mjs';
 import path from 'path';
+import url from 'url';
 
-const HQ_ROOT = path.dirname(urlToPath(import.meta.url));
+const HQ_ROOT = path.dirname(url.fileURLToPath(import.meta.url));
 
 const liveReloadServer = async (app, server) => {
   if (app.production) {
