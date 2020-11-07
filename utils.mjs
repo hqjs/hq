@@ -196,10 +196,12 @@ export const getModulePath = filepath => {
 
 export const getPackageJSONDir = async dir => {
   let dirPath = dir;
-  while (dirPath !== '/' && !await fs.pathExists(`${dirPath}/package.json`)) {
+  let prev = '';
+  while (dirPath !== prev && !await fs.pathExists(path.join(dirPath, 'package.json'))) {
+    prev = dirPath;
     dirPath = path.join(dirPath, '..');
   }
-  if (!await fs.pathExists(`${dirPath}/package.json`)) return null;
+  if (!await fs.pathExists(path.join(dirPath, 'package.json'))) return null;
   return dirPath;
 };
 
@@ -211,7 +213,7 @@ export const readPackageJSON = async (
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
   if (packageJSONMap.has(dirPath)) return packageJSONMap.get(dirPath);
   try {
-    const packageJSON = JSON.parse(await fs.readFile(`${dirPath}/package.json`, { encoding: 'utf8' }));
+    const packageJSON = JSON.parse(await fs.readFile(path.join(dirPath, 'package.json'), { encoding: 'utf8' }));
     const filteredJSON = {};
     for (const field of fields) {
       filteredJSON[field] = packageJSON[field];

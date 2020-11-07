@@ -1,11 +1,11 @@
 import { changeScriptExt, changeStyleExt, fetch, getBundleName, getScriptName } from './utils.mjs';
+import { pathToURL, resolvePackageMain } from '../utils.mjs';
 import buildCss from './css.mjs';
 import buildHtml from './html.mjs';
 import buildJs from './js.mjs';
 import buildManifest from './manifest.mjs';
 import fs from 'fs-extra';
 import path from 'path';
-import { resolvePackageMain } from '../utils.mjs';
 import rollup from 'rollup/dist/rollup.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
@@ -28,8 +28,8 @@ export default async (app, buildArg) => {
   if (!buildArg) await fs.remove(path.resolve(app.root, 'dist'));
   else {
     override = true;
-    const src = app.src.startsWith('./') ? app.src.slice(2) : app.src;
-    const arg = buildArg.startsWith('./') ? buildArg.slice(2) : buildArg;
+    const src = app.src.startsWith(`.${path.sep}`) ? app.src.slice(2) : app.src;
+    const arg = buildArg.startsWith(`.${path.sep}`) ? buildArg.slice(2) : buildArg;
     buildPath = arg.startsWith(src) ? arg.slice(src.length + 1) : arg;
   }
   const main = buildPath || await resolvePackageMain(path.resolve(app.root, app.src), { search: false });
@@ -130,7 +130,7 @@ const request = async (app, req, module, {
           !fpath.startsWith('/') ?
             path.resolve('/', fpath) :
             fpath;
-        return [ tfPath, trPath ];
+        return [ tfPath, pathToURL(trPath) ];
       })
       .filter(([ fpath, rpath ]) => !visited.has(rpath) && (
         module ||

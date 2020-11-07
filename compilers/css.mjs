@@ -35,10 +35,7 @@ const preprocess = async (ctx, content, sourceMap, { skipSM }) => {
   } else if (ctx.stats.ext === '.less') {
     const { default: less } = await import('postcss-less');
     preOptions.parser = less.parser;
-  }
-  if (ctx.stats.ext === '.less') {
-    const { default: lessSyntax } = await import('postcss-less');
-    preOptions.syntax = lessSyntax;
+    preOptions.syntax = less;
   }
   if (!skipSM) preOptions.map = {
     annotation: `${ctx.path}.map`,
