@@ -120,17 +120,18 @@ const request = async (app, req, module, {
   } finally {
     await Promise.allSettled(Array.from(queue.entries())
       .map(([ fpath, rpath ]) => {
-        const trPath = rpath.startsWith(baseURI) ?
-          rpath.slice(baseURI.length) :
-          !rpath.startsWith('/') ?
-            path.resolve('/', rpath) :
-            rpath;
+        const uPath = pathToURL(rpath);
+        const trPath = uPath.startsWith(baseURI) ?
+          uPath.slice(baseURI.length) :
+          !uPath.startsWith('/') ?
+            path.resolve('/', uPath) :
+            uPath;
         const tfPath = fpath.startsWith(baseURI) ?
           fpath.slice(baseURI.length) :
           !fpath.startsWith('/') ?
             path.resolve('/', fpath) :
             fpath;
-        return [ tfPath, pathToURL(trPath) ];
+        return [ tfPath, trPath ];
       })
       .filter(([ fpath, rpath ]) => !visited.has(rpath) && (
         module ||

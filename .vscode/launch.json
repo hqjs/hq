@@ -13,6 +13,19 @@
         "--experimental-modules",
         "--experimental-json-modules"
       ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch HQ Build",
+      "program": "${workspaceFolder}/index.mjs",
+      "runtimeArgs": [
+        "--experimental-modules",
+        "--experimental-json-modules"
+      ],
+      "args": [
+        "build"
+      ]
     }
   ]
 }
