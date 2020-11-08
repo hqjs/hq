@@ -1,11 +1,11 @@
 import { changeScriptExt, changeStyleExt, fetch, getBundleName, getScriptName } from './utils.mjs';
-import { pathToURL, resolvePackageMain } from '../utils.mjs';
 import buildCss from './css.mjs';
 import buildHtml from './html.mjs';
 import buildJs from './js.mjs';
 import buildManifest from './manifest.mjs';
 import fs from 'fs-extra';
 import path from 'path';
+import { resolvePackageMain } from '../utils.mjs';
 import rollup from 'rollup/dist/rollup.js';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
@@ -120,12 +120,11 @@ const request = async (app, req, module, {
   } finally {
     await Promise.allSettled(Array.from(queue.entries())
       .map(([ fpath, rpath ]) => {
-        const uPath = pathToURL(rpath);
-        const trPath = uPath.startsWith(baseURI) ?
-          uPath.slice(baseURI.length) :
-          !uPath.startsWith('/') ?
-            path.resolve('/', uPath) :
-            uPath;
+        const trPath = rpath.startsWith(baseURI) ?
+          rpath.slice(baseURI.length) :
+          !rpath.startsWith('/') ?
+            path.resolve('/', rpath) :
+            rpath;
         const tfPath = fpath.startsWith(baseURI) ?
           fpath.slice(baseURI.length) :
           !fpath.startsWith('/') ?

@@ -150,6 +150,8 @@ const resolveFile = async ctx => {
   ctx.dpath += ext;
   ctx.srcPath += ext;
   ctx.dirname = path.dirname(ctx.dpath);
+  const stats = await fs.lstat(ctx.srcPath);
+  ctx.size = stats.size;
 };
 
 const resolveDirectory = async ctx => {
@@ -160,6 +162,8 @@ const resolveDirectory = async ctx => {
   ctx.srcPath = path.join(ctx.srcPath, fileName);
   ctx.dpath = path.join(ctx.dpath, fileName);
   ctx.dirname = path.dirname(ctx.dpath);
+  const stats = await fs.lstat(ctx.srcPath);
+  ctx.size = stats.size;
 };
 
 const resolvePath = async ctx => {

@@ -331,10 +331,11 @@ const precompileSvelte = async (ctx, content) => {
       const ext = getScriptExtensionByAttrs(attributes);
       if (![ '.ts', '.tsx', '.coffee', '.jsx' ].includes(ext)) return null;
       // TODO: check if sourcemaps can be usefull for inline scripts
+      const index = ++scriptIndex;
       return compileJS({
         ...ctx,
-        dpath: `${ctx.dpath}-${scriptIndex++}${ext}`,
-        path: `${ctx.path}-${scriptIndex++}${ext}`,
+        dpath: `${ctx.dpath}-${index}${ext}`,
+        path: `${ctx.path}-${index}${ext}`,
         stats: {
           ...ctx.stats,
           ext,
@@ -344,10 +345,11 @@ const precompileSvelte = async (ctx, content) => {
     style({ content: styleContent, attributes }) {
       const ext = getStyleExtensionByAttrs(attributes);
       if (![ '.sass', '.scss', '.less' ].includes(ext)) return null;
+      const index = ++styleIndex;
       return compileCSS({
         ...ctx,
-        dpath: `${ctx.dpath}$${styleIndex++}${ext}`,
-        path: `${ctx.path}$${styleIndex++}${ext}`,
+        dpath: `${ctx.dpath}$${index}${ext}`,
+        path: `${ctx.path}$${index}${ext}`,
         stats: {
           ...ctx.stats,
           ext,

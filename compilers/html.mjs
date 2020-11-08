@@ -92,10 +92,11 @@ export default async (ctx, content) => {
           const worker = node.attrs && node.attrs.type === 'text/js-worker' ? 'worker-' : '';
           const nodeContent = node.content.join('');
           // TODO: check if sourcemaps can be usefull for inline scripts
+          const index = ++scriptIndex;
           promises.push(compileJS({
             ...ctx,
-            dpath: `${ctx.dpath}-${worker}${scriptIndex++}${ext}`,
-            path: `${ctx.path}-${worker}${scriptIndex++}${ext}`,
+            dpath: `${ctx.dpath}-${worker}${index}${ext}`,
+            path: `${ctx.path}-${worker}${index}${ext}`,
             stats: {
               ...ctx.stats,
               ext,
@@ -135,10 +136,11 @@ export default async (ctx, content) => {
       tree.match({ tag: 'style' }, node => {
         const ext = getStyleExtensionByAttrs(node.attrs);
         const nodeContent = node.content.join('');
+        const index = ++styleIndex;
         promises.push(compileCSS({
           ...ctx,
-          dpath: `${ctx.dpath}$${styleIndex++}${ext}`,
-          path: `${ctx.path}$${styleIndex++}${ext}`,
+          dpath: `${ctx.dpath}$${index}${ext}`,
+          path: `${ctx.path}$${index}${ext}`,
           stats: {
             ...ctx.stats,
             ext,
