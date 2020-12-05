@@ -68,6 +68,7 @@
     "acorn": "^8.0.4",
     "babel-plugin-const-enum": "^1.0.1",
     "babel-plugin-minify-dead-code-elimination": "~0.5.1",
+    "babel-plugin-transform-assets-import-to-string": "^1.2.0",
     "babel-preset-minify": "~0.5.1",
     "browserslist": "^4.14.6",
     "buffer": "^6.0.1",

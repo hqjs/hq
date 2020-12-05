@@ -31,6 +31,7 @@ import babelPresetReact from '@babel/preset-react';
 // import babelSyntaxOptionalChaining from '@babel/plugin-syntax-optional-chaining';
 // import babelSyntaxTopLevelAwait from '@babel/plugin-syntax-top-level-await';
 // import babelSyntaxTypescript from '@babel/plugin-syntax-typescript';
+import babelTransforAssetsImport from 'babel-plugin-transform-assets-import-to-string';
 import babelTransformClassProperties from '@babel/plugin-proposal-class-properties';
 import babelTransformDecorators from '@babel/plugin-proposal-decorators';
 import babelTransformExportDefault from '@babel/plugin-proposal-export-default-from';
@@ -72,6 +73,7 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
   if (!isTS && !isTSX) tsOptions.decoratorsBeforeExport = true;
 
   const prePlugins = [
+    [ babelTransforAssetsImport, { extensions: [ '.gif', '.jpeg', '.jpg', '.png', '.svg', '.txt' ] }],
     babelTransformExportDefault,
     [ babelTransformDecorators, tsOptions ],
     hqTransformParameterDecorators,
