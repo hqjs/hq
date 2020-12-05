@@ -123,14 +123,9 @@ const request = async (app, req, module, {
         const trPath = rpath.startsWith(baseURI) ?
           rpath.slice(baseURI.length) :
           !rpath.startsWith('/') ?
-            path.resolve('/', rpath) :
+            `/${rpath}` :
             rpath;
-        const tfPath = fpath.startsWith(baseURI) ?
-          fpath.slice(baseURI.length) :
-          !fpath.startsWith('/') ?
-            path.resolve('/', fpath) :
-            fpath;
-        return [ tfPath, trPath ];
+        return [ fpath, trPath ];
       })
       .filter(([ fpath, rpath ]) => !visited.has(rpath) && (
         module ||
