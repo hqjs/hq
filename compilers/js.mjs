@@ -502,7 +502,7 @@ const compileCSSModules = async (ctx, content) => {
     ...Array.from(content.matchAll(CSS_REQUIRE_MODULES_REX)),
   ];
   const cssModules = styleImports.map(([ , filename ]) =>
-    urlToPath(querystring.unescape(url.resolve(`${querystring.escapedname(ctx.dirname)}/`, filename))));
+    urlToPath(querystring.unescape(url.resolve(`${querystring.escape(ctx.dirname)}/`, filename))));
   const extensions = styleImports.map(([ ,, ext ]) => ext);
 
   const styleBuilds = cssModules
