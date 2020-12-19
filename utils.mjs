@@ -208,7 +208,7 @@ export const getPackageJSONDir = async dir => {
 export const readPackageJSON = async (
   dir,
   { search = true } = {},
-  fields = [ 'browser', 'main', 'module', 'version' ],
+  fields = [ 'browser', 'exports', 'main', 'module', 'version' ],
 ) => {
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
   if (packageJSONMap.has(dirPath)) return packageJSONMap.get(dirPath);
@@ -228,13 +228,15 @@ export const readPackageJSON = async (
 export const resolvePackageMain = async (dir, { search = false } = {}) => {
   const dirPath = search ? await getPackageJSONDir(dir) : dir;
   const packageJSON = await readPackageJSON(dirPath, { search: false });
-  return packageJSON.module ||
-    (typeof packageJSON.browser === 'string' && packageJSON.browser) ||
+  return (
+    typeof packageJSON.browser === 'string' && packageJSON.browser) ||
     (
       typeof packageJSON.browser === 'object' &&
       packageJSON.browser && packageJSON.main &&
       (packageJSON.browser[`./${packageJSON.main}`] || packageJSON.browser[packageJSON.main])
     ) ||
+    packageJSON.module ||
+    packageJSON.exports ||
     packageJSON.main ||
     `index${await findExistingExtension(`${dirPath}/index`)}`;
 };
@@ -423,13 +425,15 @@ export const getSrc = async root => {
   ]);
   return packageJSON.module ?
     path.dirname(packageJSON.module) :
-    srcHTML ?
-      'src' :
-      rootHTML ?
-        '.' :
-        srcExists ?
-          'src' :
-          packageJSON.main ?
-            path.dirname(packageJSON.main) :
-            '.';
+    packageJSON.exports ?
+      path.dirname(packageJSON.exports) :
+      srcHTML ?
+        'src' :
+        rootHTML ?
+          '.' :
+          srcExists ?
+            'src' :
+            packageJSON.main ?
+              path.dirname(packageJSON.main) :
+              '.';
 };
