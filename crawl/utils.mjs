@@ -20,8 +20,9 @@ export const getDirectoryScriptName = (root, src) => {
     const packageJSON = packageCache.get(packagePath) ||
       JSON.parse(fs.readFileSync(packagePath, { encoding: 'utf-8' }));
     packageCache.set(packagePath, packageJSON);
-    const main = packageJSON.module ||
-      (typeof packageJSON.browser === 'string' && packageJSON.browser) ||
+    const main = (typeof packageJSON.browser === 'string' && packageJSON.browser) ||
+      packageJSON.module ||
+      (typeof packageJSON.exports === 'string' && packageJSON.exports) ||
       packageJSON.main;
     const fullPath = path.resolve(src, main.startsWith('/') ? main.slice(1) : main);
     return changeScriptExt(fullPath);

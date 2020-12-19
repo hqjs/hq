@@ -236,7 +236,7 @@ export const resolvePackageMain = async (dir, { search = false } = {}) => {
       (packageJSON.browser[`./${packageJSON.main}`] || packageJSON.browser[packageJSON.main])
     ) ||
     packageJSON.module ||
-    packageJSON.exports ||
+    (typeof packageJSON.exports === 'string' && packageJSON.exports) ||
     packageJSON.main ||
     `index${await findExistingExtension(`${dirPath}/index`)}`;
 };
@@ -307,6 +307,7 @@ export const resolvePackageFrom = (basedir, dpath, hqroot) => new Promise((resol
       packageFilter(pkg) {
         const { main: pkgMain } = pkg;
         if (pkg.module) pkg.main = pkg.module;
+        else if (typeof pkg.exports === 'string') pkg.main = pkg.exports;
         if (typeof pkg.browser === 'string') pkg.main = pkg.browser;
         else if (typeof pkg.browser === 'object' && pkg.browser) {
           if (modPath) {
@@ -425,7 +426,7 @@ export const getSrc = async root => {
   ]);
   return packageJSON.module ?
     path.dirname(packageJSON.module) :
-    packageJSON.exports ?
+    typeof packageJSON.exports === 'string' ?
       path.dirname(packageJSON.exports) :
       srcHTML ?
         'src' :
