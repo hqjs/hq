@@ -3,7 +3,6 @@ import { getBrowsersList } from './tools.mjs';
 import { pathToURL } from '../utils.mjs';
 import postcss from 'postcss';
 import postcssPresetEnv from 'postcss-preset-env';
-import querystring from 'querystring';
 import url from 'url';
 export const modulesCache = new Map;
 
@@ -12,12 +11,12 @@ const preprocess = async (ctx, content, sourceMap, { skipSM }) => {
   const prePlugins = [ root => {
     const replacePath3 = (math, p1, styleImport, p2) =>
       styleImport.startsWith('/') ?
-        `${p1}${url.resolve(`${pathToURL(querystring.escape(ctx.app.src))}/`, styleImport.slice(1))}${p2}` :
-        `${p1}.${url.resolve(`${querystring.escape(ctx.dirname)}/`, styleImport)}${p2}`;
+        `${p1}${url.resolve(`${pathToURL(ctx.app.src)}/`, styleImport.slice(1))}${p2}` :
+        `${p1}.${url.resolve(`${pathToURL(ctx.dirname)}/`, styleImport)}${p2}`;
     const replacePath1 = (match, styleImport) =>
       styleImport.startsWith('/') ?
-        `${url.resolve(`${pathToURL(querystring.escape(ctx.app.src))}/`, styleImport.slice(1))}` :
-        `.${url.resolve(`${querystring.escape(ctx.dirname)}/`, styleImport)}`;
+        `${url.resolve(`${pathToURL(ctx.app.src)}/`, styleImport.slice(1))}` :
+        `.${url.resolve(`${pathToURL(ctx.dirname)}/`, styleImport)}`;
     root.walkAtRules('import', rule => {
       rule.params = rule.params
         .replace(/(url\(['"]*)([^'")]+)(['"]*\))/g, replacePath3)

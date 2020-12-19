@@ -59,7 +59,6 @@ import hqTransformPaths from '@hqjs/babel-plugin-transform-paths';
 import hqTransformTypescript from '@hqjs/babel-plugin-transform-typescript';
 import hqTypeMetadata from '@hqjs/babel-plugin-add-type-metadata';
 import path from 'path';
-import querystring from 'querystring';
 import url from 'url';
 
 const CSS_MODULES_REX = /import\s+[*a-zA-Z_,{}\s]+\s+from\s+['"]{1}([^'"]+\.(css|sass|scss|less))['"]{1}/gm;
@@ -81,7 +80,7 @@ const getPrePlugins = (ctx, skipHQTrans, skipPoly) => {
     [ babelTransformPrivateMethods, { loose: true }],
     [ hqTransformDefine, {
       // TODO: make it conditional
-      'import.meta': { url: querystring.escape(ctx.dpath) },
+      'import.meta': { url: pathToURL(ctx.dpath) },
       'process.env.NODE_ENV': ctx.app.production ? 'production' : 'development',
       'typeof window': 'object',
     }],
@@ -502,7 +501,7 @@ const compileCSSModules = async (ctx, content) => {
     ...Array.from(content.matchAll(CSS_REQUIRE_MODULES_REX)),
   ];
   const cssModules = styleImports.map(([ , filename ]) =>
-    urlToPath(querystring.unescape(url.resolve(`${querystring.escape(ctx.dirname)}/`, filename))));
+    urlToPath(url.resolve(`${pathToURL(ctx.dirname)}/`, filename)));
   const extensions = styleImports.map(([ ,, ext ]) => ext);
 
   const styleBuilds = cssModules
@@ -515,8 +514,7 @@ const compileCSSModules = async (ctx, content) => {
         const { code, map } = await compileCSS({
           ...ctx,
           dpath,
-          originalPath: querystring.escape(dpath),
-          path: querystring.escape(dpath),
+          path: dpath,
           srcPath: fileSrcPath,
           stats: { ...ctx.stats, ext: `.${extensions[index]}` },
         }, styleContent, false, { skipSM: ctx.app.build, useModules: true });
@@ -539,7 +537,7 @@ const compileCSSModules = async (ctx, content) => {
         const stats = ctx.app.table.touch(fileSrcPath);
         const styleBuildPromise = saveContent(code, {
           dpath,
-          path: querystring.escape(dpath),
+          path: dpath,
           stats,
           store: ctx.store,
         });
@@ -549,7 +547,7 @@ const compileCSSModules = async (ctx, content) => {
           // TODO: add map byte length here
           const mapBuildPromise = saveContent(JSON.stringify(map), {
             dpath: `${dpath}.map`,
-            path: `${querystring.escape(dpath)}.map`,
+            path: `${dpath}.map`,
             stats: mapStats,
             store: ctx.store,
           });
