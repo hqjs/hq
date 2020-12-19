@@ -38,7 +38,7 @@ const preprocess = async (ctx, content, sourceMap, { skipSM }) => {
     preOptions.syntax = lessSyntax;
   }
   if (!skipSM) preOptions.map = {
-    annotation: `${ctx.path}.map`,
+    annotation: `${ctx.dpath}.map`,
     inline: false,
     prev: sourceMap,
   };
@@ -104,7 +104,7 @@ const compile = async (ctx, content, sourceMap, { skipSM, useModules }) => {
 
   const options = { from: `${ctx.path}.map*` };
   if (!skipSM) options.map = {
-    annotation: `${ctx.path}.map`,
+    annotation: `${ctx.dpath}.map`,
     inline: false,
     prev: sourceMap,
   };

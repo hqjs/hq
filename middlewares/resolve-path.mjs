@@ -31,12 +31,14 @@ export default () => async (ctx, next) => {
   const current = pathMap.get(ctx.dpath);
   if (current !== undefined) {
     ctx.dirname = current.dirname;
+    ctx.dpath = current.dpath;
     ctx.srcPath = current.srcPath;
     ctx.size = current.size;
   } else {
     await resolvePath(ctx);
     pathMap.set(ctx.dpath, {
       dirname: ctx.dirname,
+      dpath: ctx.dpath,
       size: ctx.size,
       srcPath: ctx.srcPath,
     });

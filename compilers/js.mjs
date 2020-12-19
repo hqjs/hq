@@ -603,7 +603,7 @@ const compileJS = async (ctx, content, sourceMap, { skipHQTrans = false, skipSM 
     sourceMaps: !skipSM,
   });
 
-  const codeSM = skipSM ? code : `${code}\n//# sourceMappingURL=${ctx.path}.map`;
+  const codeSM = skipSM ? code : `${code}\n//# sourceMappingURL=${ctx.dpath}.map`;
   return { code: codeSM, map };
 };
 
